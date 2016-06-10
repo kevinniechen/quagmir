@@ -1,5 +1,5 @@
 # Quagmir
-miRNA sequencing pipeline for IsomiR quantification and analysis
+A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 ## Installation
 Clone git repo INSERT CODE
 Install python dependencies using pip-install INSERT CODE
