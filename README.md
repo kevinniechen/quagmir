@@ -34,6 +34,7 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 
 3. Run pipeline: `snakemake`
 </div>
+
 ## Notes
 > The step of collapsing sample files takes the longest time, but once the samples are collapsed, and you need to re-run the pipeline, the pipeline will automatically start from the collapsed files and take a far smaller amount of time
 
