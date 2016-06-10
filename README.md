@@ -1,13 +1,17 @@
 # QuagmiR
 A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 
+## Necessary input files (see Usage for more details)
+- Unmapped RNA-seq files  with .fastq_ready extension
+- File with miRNA information (name, motif, consensus)
+
 ## Installation
 1. Download repository: `git clone https://github.com/kevchn/quagmir`
 2. Go into local quagmir folder: `cd quagmir`
 3. Install python dependencies: `pip install -r requirements.txt`
 
 ## Usage
-1. Add your samples (with extension .fastq_ready) into data folder:
+1. Add your .fastq_ready samples into the data folder:
 ```
 ├── LICENSE
 ├── README.md
