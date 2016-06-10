@@ -72,7 +72,7 @@ def get_tailing_seq_5p(seq, tail_len):
 
 rule all:
     input:
-        "report.txt"
+        expand("results/{A}.results.txt", A=SAMPLES)
 
 rule collapse_fastq:
     input:
@@ -87,7 +87,7 @@ rule analyze_isomir:
         motif_consensus = MOTIF_CONSENSUS,
         collapsed_fasta = expand('data/{A}.collapsed', A=SAMPLES)
     output:
-        "report.txt"
+        expand("results/{A}.results.txt", A=SAMPLES)
     run:
         input_sequences = SeqIO.parse(open('motif-consensus.fa'), 'fasta')
         for seq_record in input_sequences:
