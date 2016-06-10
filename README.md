@@ -9,7 +9,7 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 ## Usage
 
 1. Add your .fastq_ready samples into the data folder:
-```
+  ```
   ├── LICENSE
   ├── README.md
   ├── Snakefile
@@ -19,16 +19,16 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
   ├── motif-consensus.fa
   ├── report.txt
   └── requirements.txt
-```
+  ```
 
 2. Edit the motif-consensus.fa file to insert your miRNA information with the following format:
-```
+  ```
   >miRNA_name miRNA_motif
   miRNA_consensus_sequence
 
   >passenger-shRNA-mir21-ORF59-5p-1 ACACCCTGGCCGGGT
   CCGACACCCTGGCCGGGTTGT
-```
+  ```
 
 3. Run pipeline: `snakemake`
 
