@@ -25,10 +25,10 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 </pre>
 2. Edit the motif-consensus.fa file to insert your miRNA information with the following format:
 <pre>
->miRNA_name miRNA_motif
+\>miRNA_name miRNA_motif
 miRNA_consensus_sequence
 
->passenger-shRNA-mir21-ORF59-5p-1 ACACCCTGGCCGGGT
+\>passenger-shRNA-mir21-ORF59-5p-1 ACACCCTGGCCGGGT
 CCGACACCCTGGCCGGGTTGT
 </pre>
 3. Run pipeline: `snakemake`
