@@ -1,7 +1,7 @@
 # QuagmiR
 A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 
-## Necessary input files (see Usage for more details)
+## Necessary input files (see Usage details)
 - Unmapped RNA-seq files  with .fastq_ready extension
 - File with miRNA information (name, motif, consensus)
 
