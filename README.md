@@ -11,6 +11,8 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 3. Install python dependencies: `pip install -r requirements.txt`
 
 ## Usage
+<div>
+
 1. Add your .fastq_ready samples into the data folder:
 
 <pre>
@@ -36,3 +38,5 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 </pre>
 
 3. Run pipeline: snakemake
+
+</div>
