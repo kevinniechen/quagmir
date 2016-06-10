@@ -21,7 +21,7 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
   └── requirements.txt
   ```
 
-2. Edit the motif-consensus.fa file to insert your miRNA information with the following format:
+2. Edit the **motif-consensus.fa** file to insert your miRNA information with the following format:
   ```
   >miRNA_name miRNA_motif
   miRNA_consensus_sequence
@@ -35,4 +35,4 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 ## Notes
 The step of collapsing sample files takes the longest time, but once the samples are collapsed, and you need to re-run the pipeline, the pipeline will automatically start from the collapsed files and take a far smaller amount of time
 
-Output will be a report-**sample_name**.txt file for each sample
+Output will be a **report.sample_name.txt** file for each sample
