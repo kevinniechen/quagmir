@@ -32,7 +32,6 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
   CCGACACCCTGGCCGGGTTGT
 </pre>
 </div>
-
 3. Run pipeline: `snakemake`
 
 ## Notes
