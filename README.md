@@ -1,10 +1,6 @@
 # QuagmiR
 A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 
-## Necessary input files (see Usage for details)
-- .fastq_ready sample files
-- file with miRNA name, motif, consensus information
-
 ## Installation
 1. Download repository: `git clone https://github.com/kevchn/quagmir`
 2. Go into local quagmir folder: `cd quagmir`
@@ -37,6 +33,14 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
   CCGACACCCTGGCCGGGTTGT
 </pre>
 
-3. Run pipeline: snakemake
+3. Run pipeline: 
 
+<pre>
+  snakemake
+</pre>
 </div>
+
+## Notes
+> The step of collapsing sample files takes the longest time, but once the samples are collapsed, and you need to re-run the pipeline, the pipeline will automatically start from the collapsed files and take a far smaller amount of time
+> Output will be as a report.txt file
+
