@@ -2,10 +2,10 @@
 A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 
 ## Installation
-1. Download repository: `git checkout -b my-new-feature`
-2. Go into the directory: `cd GITHUBDIRECTORY`
+1. Create local project directory: `mkdir quagmir; cd quagmir`
+2. Download repository: `git clone https://github.com/kevchn/quagmir`
 3. Install python dependencies: `pip install -r requirements.txt`
 
 ## Usage
-Create file directory
-Run using INSERT CODE
+1. Create file directory for analysis: `mkdir `
+2. Run pipeline: `snakemake`
