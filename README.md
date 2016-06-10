@@ -2,7 +2,7 @@
 A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 
 ## Dependencies
-* Make sure that you have Python 2.7.9+ or Python 3.4+ installed (type `python --version` in the console) 
+* Make sure that you have [Python](https://www.python.org/downloads/) 2.7.9+ or [Python](https://www.python.org/downloads/) 3.4+ installed (type `python --version` in the console) 
 * Make sure you have the latest version of pip: `pip install -U pip`
 
 ## Installation
