@@ -1,6 +1,4 @@
-<snippet>
-  <content><![CDATA[
-# ${1:Project Name}
+# Quagmir
 miRNA sequencing pipeline for IsomiR quantification and analysis
 ## Installation
 Clone git repo INSERT CODE
