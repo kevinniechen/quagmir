@@ -76,18 +76,18 @@ rule all:
 
 rule collapse_fastq:
     input:
-        expand('data/{A}', A=SAMPLES)
+        'data/{A}'
     output:
-        expand('data/{A}.collapsed', A=SAMPLES)
+        'data/{A}.collapsed'
     shell:
         "awk 'NR%4==2' {input} | sort -S1900G | uniq -c > {output}"
 
 rule analyze_isomir:
     input:
         motif_consensus = MOTIF_CONSENSUS,
-        collapsed_fasta = expand('data/{A}.collapsed', A=SAMPLES)
+        collapsed_fasta = 'data/{A}.collapsed'
     output:
-        expand("results/{A}.results.txt", A=SAMPLES)
+        "results/{A}.results.txt"
     run:
         input_sequences = SeqIO.parse(open('motif-consensus.fa'), 'fasta')
         for seq_record in input_sequences:
