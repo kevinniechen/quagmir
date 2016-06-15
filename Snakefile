@@ -29,7 +29,7 @@ def calc_trimming_5p(seq_end, consensus_end, seq):
                 consensus_end) - i - 1]:
             # snp check
             if (len(consensus_end) - i) > trimming_threshold:
-                return '0-SNP'
+                return 0
             else:
                 return (len(consensus_end) - i)
     if len(seq_end) < len(consensus_end):
@@ -43,7 +43,7 @@ def calc_trimming(seq_end, consensus_end):
         if seq_end[i] != consensus_end[i]:
             # snp check
             if (len(consensus_end) - i) > trimming_threshold:
-                return '0-SNP'
+                return 0
             else:
                 return (len(consensus_end) - i)
     if len(seq_end) < len(consensus_end):
