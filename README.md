@@ -17,12 +17,13 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
   ├── LICENSE
   ├── README.md
   ├── Snakefile
-  ├── data
+  ├── data/
   │   ├── sample.fastq_ready
   │   └── <b>YOUR_FILE_HERE.fastq_ready</b>
+  |   ├── collapsed/
   ├── motif-consensus.fa
   ├── requirements.txt
-  └── results
+  └── results/
   </pre>
 
 2. Edit the **motif-consensus.fa** file to insert your miRNA information with the following format:
