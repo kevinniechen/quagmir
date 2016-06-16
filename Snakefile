@@ -23,29 +23,19 @@ SAMPLES = [os.path.basename(f) for f in glob.glob('data/*.fastq_ready')]
 
 
 def calc_trimming_5p(seq_end, consensus_end, seq):
-    trimming_threshold = 5
     for i in range(0, min(len(seq_end), len(consensus_end))):
         if seq_end[len(seq_end) - i - 1] != consensus_end[len(
                 consensus_end) - i - 1]:
-            # snp check
-            if (len(consensus_end) - i) > trimming_threshold:
-                return 0
-            else:
-                return (len(consensus_end) - i)
+            return (len(consensus_end) - i)
     if len(seq_end) < len(consensus_end):
         return len(consensus_end) - len(seq_end)
     return 0
 
 
 def calc_trimming(seq_end, consensus_end):
-    trimming_threshold = 5
     for i in range(0, min(len(seq_end), len(consensus_end))):
         if seq_end[i] != consensus_end[i]:
-            # snp check
-            if (len(consensus_end) - i) > trimming_threshold:
-                return 0
-            else:
-                return (len(consensus_end) - i)
+            return (len(consensus_end) - i)
     if len(seq_end) < len(consensus_end):
         return len(consensus_end) - len(seq_end)
     return 0
@@ -90,10 +80,21 @@ rule analyze_isomir:
         "results/{A}.results.txt"
     run:
         input_sequences = SeqIO.parse(open('motif-consensus.fa'), 'fasta')
+        # clean up code... get rid of duplicates
+        input_list = []
+        mir_dict = {}
         for seq_record in input_sequences:
             mirna = seq_record.description.split()[0]
             motif = seq_record.description.split()[1]
-            consensus = str(seq_record.seq)
+            mir_dict[motif] = mirna
+            input_list.append(seq_record)
+        # going through each miRNA record
+        for input_data in input_list:
+            mirna = input_data.description.split()[0]
+            motif = input_data.description.split()[1]
+            consensus = str(input_data.seq)
+
+            output_dict = {}
 
             # going in mirna-seq collapsed file, searching for single motif
             with open(str(input.collapsed_fasta), "rt") as f:
@@ -107,22 +108,12 @@ rule analyze_isomir:
                         total_reads += int(reads)
                 f.seek(0)
 
-                with open(output[0], 'a') as out:
-                    out.write('===========================================\n' +
-                              mirna + '\n')
-                    out.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
-                              "SEQUENCE",
-                              "MIRNA_READS",
-                              "PERCENTAGE",
-                              "TRIM_LENGTH",
-                              "TAIL_LENGTH",
-                              "TAIL_SEQUENCE",
-                              "VARIATION_5P"))
-
                 for line in f:
                     reads = line.rpartition(' ')[0]
                     seq = line.rpartition(' ')[2].rstrip()
                     if motif in line:
+                        del mir_dict[motif]
+
                         # sequence manipulations
                         consensus_index_3p = str.find(
                             consensus, motif) + len(motif)
@@ -137,8 +128,9 @@ rule analyze_isomir:
                         seq_end_5p = seq[:seq_index_5p]
 
                         # calculation of output values
-                        percentage = '{0:.2f}%'.format(
+                        percentage = '{0:.2f}'.format(
                             100 * Decimal(reads) / Decimal(total_reads))
+                        read_len = len(seq)
                         trim_len = calc_trimming(seq_end_3p, consensus_end_3p)
                         tail_len = calc_tailing(
                             seq_end_3p, consensus_end_3p, trim_len)
@@ -149,22 +141,46 @@ rule analyze_isomir:
                             trim_len_5p,
                             calc_tailing(
                                 seq_end_5p, consensus_end_5p, trim_len_5p))
+                        annotation = ""
 
-                        # display
+                        # check for matching motif pulls
+                        matching_motifs = [
+                            x for x in list(mir_dict.keys()) if x in line]
+                        for matched_motif in matching_motifs:
+                            annotation += mir_dict[matched_motif]
+                            annotation += " "
+                        mir_dict[motif] = mirna
+
                         with open(output[0], 'a') as out:
                             out.write(
-                                '{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
+                                '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
                                     seq,
                                     reads,
                                     percentage,
+                                    read_len,
                                     trim_len,
                                     tail_len,
                                     tail_seq,
-                                    variation_5p))
+                                    variation_5p,
+                                    annotation))
 
-                        # calculate variation score (5' end variation)
-                        variation += ((Decimal(reads) *
-                                       variation_5p) / total_reads)
+                            # calculate variation score (5' end variation)
+                            variation += ((Decimal(reads) *
+                                           variation_5p) / total_reads)
+
+                with open(output[0], 'a') as out:
+                    out.write('===========================================\n' +
+                              mirna + '\n')
+                    out.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
+                              "SEQUENCE",
+                              "MIRNA_READS",
+                              "PERCENTAGE",
+                              "READ_LENGTH",
+                              "TRIM_LENGTH",
+                              "TAIL_LENGTH",
+                              "TAIL_SEQUENCE",
+                              "VARIATION_5P",
+                              "ANNOTATION"))
 
                 with open(output[0], 'a') as out:
                     out.write('***5P-Variation: ' +

@@ -40,3 +40,13 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 The step of collapsing sample files takes the longest time, but once the samples are collapsed, and you need to re-run the pipeline, the pipeline will automatically start from the collapsed files and take a far shorter amount of time
 
 Output will be a **sample.fastq_ready.results.txt** file for each sample in the **results/** folder
+
+## Features
+One step isomir analysis for multiple miRNA and samples
+miRNA trimming/tailing in 3' modifications
+5' variability score (indicative of cleavage fidelity)
+Detection of isomiRs that could be from multiple miRNA
+
+To be added:
+Probability that an isomiR is from a certain miRNA based on biological rules
+more...
