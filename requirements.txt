@@ -1,6 +1,5 @@
 biopython==1.66
-conda==4.0.7
-conda-env==2.4.5
+conda==4.0.7 
 cycler==0.10.0
 docutils==0.12
 dropbox==5.2.1
