@@ -8,6 +8,7 @@ files in /data folder and motif.txt"""
 
 import glob
 import csv
+import collections
 import numpy as np
 import pandas as pd
 from os.path import join
@@ -62,6 +63,9 @@ def get_tailing_seq_5p(seq, tail_len):
 
     ##########################################################################
 
+configfile:
+    "config.yaml"
+
 rule all:
     input:
         expand("results/{A}.results.txt", A=SAMPLES)
@@ -70,14 +74,14 @@ rule collapse_fastq:
     input:
         'data/{A}'
     output:
-        'data/{A}.collapsed'
+        'data/collapsed/{A}.collapsed'
     shell:
         "awk 'NR%4==2' {input} | sort -S1900G | uniq -c > {output}"
 
 rule analyze_isomir:
     input:
         motif_consensus = MOTIF_CONSENSUS,
-        collapsed_fasta = 'data/{A}.collapsed'
+        collapsed_fasta = 'data/collapsed/{A}.collapsed'
     output:
         "results/{A}.results.txt"
     run:
@@ -102,10 +106,12 @@ rule analyze_isomir:
             with open(str(input.collapsed_fasta), "rt") as sample:
                 # calculate total reads
                 total_reads = 0
+                total_sequences = 0
                 for line in sample:
                     reads = line.rpartition(' ')[0]
                     if motif in line:
                         total_reads += int(reads)
+                        total_sequences += 1
 
                 if total_reads > 0:
                     sample.seek(0)
@@ -128,8 +134,8 @@ rule analyze_isomir:
                         seq_end_5p = seq[:seq_index_5p]
 
                         # calculation of single-statistics
-                        percent = round(
-                            100 * float(num_reads) / float(total_reads), 2)
+                        ratio = round(
+                            float(num_reads) / float(total_reads), 6)
                         len_read = len(seq)
                         len_trim = calc_trimming(seq_end_3p, consensus_end_3p)
                         len_tail = calc_tailing(
@@ -151,28 +157,57 @@ rule analyze_isomir:
                             annotation += mirna_dict[matched_motif][0]
                             annotation += " "
 
-                        table_out.append([seq, num_reads, percent, len_read,
-                                          len_trim, len_tail, seq_tail,
-                                          vari_5p, annotation])
-                # create pandas dataframe containing output
+                        if ((ratio > config['min_ratio']) or
+                                (num_reads > config['min_read'])):
+                            table_out.append([seq, len_read, num_reads, ratio,
+                                              len_trim, len_tail, seq_tail,
+                                              vari_5p, annotation])
+
+        # SECTION | MOVE STATISTICS INTO DATAFRAME ############################
                 df = pd.DataFrame(table_out,
                                   columns=["SEQUENCE",
-                                           "MIRNA_READS",
-                                           "PERCENT",
                                            "READ_LENGTH",
+                                           "MIRNA_READS",
+                                           "ABUNDANCE_RATIO",
                                            "TRIM_LENGTH",
                                            "TAIL_LENGTH",
                                            "TAIL_SEQUENCE",
                                            "VARIATION_5P",
                                            "ANNOTATION"])
+                df.sort_values(by="MIRNA_READS", ascending=0, inplace=1)
 
         # SECTION | GENERATE SUMMARY STATISTICS ###############################
                 # calculate 5' fidelity score
-                vari_5p_vals = [table_out[i][7] for i in range(len(table_out))]
-                percent_vals = [table_out[i][2] for i in range(len(table_out))]
+                vals_vari_5p = df['VARIATION_5P'].tolist()
+                vals_reads = df['MIRNA_READS'].tolist()
                 fidelity = 0
-                for vari_5p, percent in zip(vari_5p_vals, percent_vals):
-                    fidelity += round((vari_5p * percent), 2)
+                for vari_5p, read in zip(vals_vari_5p, vals_reads):
+                    fidelity += (vari_5p * read)
+                fidelity = round((fidelity / total_reads), 4)
+
+                # calculate individual nt tailing ratios
+                vals_tail_seq = df['TAIL_SEQUENCE'].tolist()
+                array_nt = [0, 0, 0, 0]  # A T C G
+                for seq_tail, read in zip(vals_tail_seq, vals_reads):
+                    count_nt = collections.Counter(seq_tail)
+                    array_nt[0] += (count_nt['A'] * read)
+                    array_nt[1] += (count_nt['T'] * read)
+                    array_nt[2] += (count_nt['C'] * read)
+                    array_nt[3] += (count_nt['G'] * read)
+                total_nt_tailing = sum(array_nt)
+                ratio_nt_tailing = (
+                    'A:' + str(round(array_nt[0] / total_nt_tailing, 4)) +
+                    '/T:' + str(round(array_nt[1] / total_nt_tailing, 4)) +
+                    '/C:' + str(round(array_nt[2] / total_nt_tailing, 4)) +
+                    '/G:' + str(round(array_nt[3] / total_nt_tailing, 4)))
+
+                # calculate ratios of trimmed/tailed sequences
+                vals_len_trim = df['TRIM_LENGTH'].tolist()
+                vals_len_tail = df['TAIL_LENGTH'].tolist()
+                ratio_seq_trim = round(len(
+                    [x for x in vals_len_trim if x != 0]) / total_sequences, 4)
+                ratio_seq_tail = round(len(
+                    [x for x in vals_len_tail if x != 0]) / total_sequences, 4)
 
         # SECTION | DISPLAY HEADER AND SUMMARY STATISTICS #####################
                 with open(output[0], 'a') as out:
@@ -180,7 +215,13 @@ rule analyze_isomir:
                               mirna + '\n')
                     out.write('**Motif: ' + motif + '\n')
                     out.write('**Consensus: ' + consensus + '\n')
-                    out.write('**Fidelity(5p): ' + str(fidelity) + '\n')
+                    out.write('**Total-Reads: ' + str(total_reads) + '\n')
+                    out.write('**Fidelity-5p: ' + str(fidelity) + '\n')
+                    out.write('**NT-Tailing: ' + ratio_nt_tailing + '\n')
+                    out.write('**Sequence-Trimming: ' +
+                              str(ratio_seq_trim) + '\n')
+                    out.write('**Sequence-Tailing: ' +
+                              str(ratio_seq_tail) + '\n')
 
         # SECTION | DISPLAY SEQUENCES AND SINGLE STATISTICS ###################
                     df.to_csv(out, sep='\t', index=False)
