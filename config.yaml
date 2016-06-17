@@ -1,0 +1,4 @@
+# NOTE: If a sequence fulfills either of these minimum requirements, it will be visible
+# NOTE: Summary statistics beginning with ** still perform calculations on the hidden sequences
+min_ratio: .001
+min_read: 9
