@@ -11,6 +11,7 @@ import csv
 import collections
 import numpy as np
 import pandas as pd
+import regex
 from os.path import join
 from os.path import splitext
 from decimal import *
@@ -61,6 +62,31 @@ def get_tailing_seq_5p(seq, tail_len):
     else:
         return '-'
 
+# "Fast Text Searching with Errors" by Sun Wu and Udi Manber
+# TR 91-11, Dept of Computer Science, University of Arizona, June 1991.
+# http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.20.8854
+
+
+def WM_approx_Ham1_search(pattern, text):
+    """Generate (Hamming_dist, start_offset)
+    for matches with distance 0 or 1"""
+    m = len(pattern)
+    S_table = defaultdict(int)
+    for i, c in enumerate(pattern):
+        S_table[c] |= 1 << i
+    R0 = 0
+    R1 = 0
+    mask = 1 << (m - 1)
+    for j, c in enumerate(text):
+        S = S_table[c]
+        shR0 = (R0 << 1) | 1
+        R0 = shR0 & S
+        R1 = ((R1 << 1) | 1) & S | shR0
+        if R0 & mask:  # exact match
+            return 0
+        elif R1 & mask:  # match with one substitution
+            return 1
+
     ##########################################################################
 
 configfile:
@@ -109,6 +135,7 @@ rule analyze_isomir:
                 total_sequences = 0
                 for line in sample:
                     reads = line.rpartition(' ')[0]
+                    m = regex.findall("(AA){e<=1}", "CAAG")
                     if motif in line:
                         total_reads += int(reads)
                         total_sequences += 1
