@@ -16,6 +16,7 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
   <pre>
   ├── LICENSE
   ├── README.md
+  ├── config.yaml
   ├── Snakefile
   ├── data/
   │   ├── sample.fastq_ready
