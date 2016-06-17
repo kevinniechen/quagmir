@@ -62,32 +62,7 @@ def get_tailing_seq_5p(seq, tail_len):
     else:
         return '-'
 
-# "Fast Text Searching with Errors" by Sun Wu and Udi Manber
-# TR 91-11, Dept of Computer Science, University of Arizona, June 1991.
-# http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.20.8854
-
-
-def WM_approx_Ham1_search(pattern, text):
-    """Generate (Hamming_dist, start_offset)
-    for matches with distance 0 or 1"""
-    m = len(pattern)
-    S_table = defaultdict(int)
-    for i, c in enumerate(pattern):
-        S_table[c] |= 1 << i
-    R0 = 0
-    R1 = 0
-    mask = 1 << (m - 1)
-    for j, c in enumerate(text):
-        S = S_table[c]
-        shR0 = (R0 << 1) | 1
-        R0 = shR0 & S
-        R1 = ((R1 << 1) | 1) & S | shR0
-        if R0 & mask:  # exact match
-            return 0
-        elif R1 & mask:  # match with one substitution
-            return 1
-
-    ##########################################################################
+##########################################################################
 
 configfile:
     "config.yaml"
@@ -191,64 +166,66 @@ rule analyze_isomir:
                                               vari_5p, annotation])
 
         # SECTION | MOVE STATISTICS INTO DATAFRAME ############################
-                df = pd.DataFrame(table_out,
-                                  columns=["SEQUENCE",
-                                           "READ_LENGTH",
-                                           "MIRNA_READS",
-                                           "ABUNDANCE_RATIO",
-                                           "TRIM_LENGTH",
-                                           "TAIL_LENGTH",
-                                           "TAIL_SEQUENCE",
-                                           "VARIATION_5P",
-                                           "ANNOTATION"])
-                df.sort_values(by="MIRNA_READS", ascending=0, inplace=1)
+                    df = pd.DataFrame(table_out,
+                                      columns=["SEQUENCE",
+                                               "READ_LENGTH",
+                                               "MIRNA_READS",
+                                               "ABUNDANCE_RATIO",
+                                               "TRIM_LENGTH",
+                                               "TAIL_LENGTH",
+                                               "TAIL_SEQUENCE",
+                                               "VARIATION_5P",
+                                               "ANNOTATION"])
+                    df.sort_values(by="MIRNA_READS", ascending=0, inplace=1)
 
         # SECTION | GENERATE SUMMARY STATISTICS ###############################
-                # calculate 5' fidelity score
-                vals_vari_5p = df['VARIATION_5P'].tolist()
-                vals_reads = df['MIRNA_READS'].tolist()
-                fidelity = 0
-                for vari_5p, read in zip(vals_vari_5p, vals_reads):
-                    fidelity += (vari_5p * read)
-                fidelity = round((fidelity / total_reads), 4)
+                    # calculate 5' fidelity score
+                    vals_vari_5p = df['VARIATION_5P'].tolist()
+                    vals_reads = df['MIRNA_READS'].tolist()
+                    fidelity = 0
+                    for vari_5p, read in zip(vals_vari_5p, vals_reads):
+                        fidelity += (vari_5p * read)
+                    fidelity = round((fidelity / total_reads), 4)
 
-                # calculate individual nt tailing ratios
-                vals_tail_seq = df['TAIL_SEQUENCE'].tolist()
-                array_nt = [0, 0, 0, 0]  # A T C G
-                for seq_tail, read in zip(vals_tail_seq, vals_reads):
-                    count_nt = collections.Counter(seq_tail)
-                    array_nt[0] += (count_nt['A'] * read)
-                    array_nt[1] += (count_nt['T'] * read)
-                    array_nt[2] += (count_nt['C'] * read)
-                    array_nt[3] += (count_nt['G'] * read)
-                total_nt_tailing = sum(array_nt)
-                ratio_nt_tailing = (
-                    'A:' + str(round(array_nt[0] / total_nt_tailing, 4)) +
-                    '/T:' + str(round(array_nt[1] / total_nt_tailing, 4)) +
-                    '/C:' + str(round(array_nt[2] / total_nt_tailing, 4)) +
-                    '/G:' + str(round(array_nt[3] / total_nt_tailing, 4)))
+                    # calculate individual nt tailing ratios
+                    vals_tail_seq = df['TAIL_SEQUENCE'].tolist()
+                    array_nt = [0, 0, 0, 0]  # A T C G
+                    for seq_tail, read in zip(vals_tail_seq, vals_reads):
+                        count_nt = collections.Counter(seq_tail)
+                        array_nt[0] += (count_nt['A'] * read)
+                        array_nt[1] += (count_nt['T'] * read)
+                        array_nt[2] += (count_nt['C'] * read)
+                        array_nt[3] += (count_nt['G'] * read)
+                    total_nt_tailing = sum(array_nt)
+                    ratio_nt_tailing = (
+                        'A:' + str(round(array_nt[0] / total_nt_tailing, 4)) +
+                        '/T:' + str(round(array_nt[1] / total_nt_tailing, 4)) +
+                        '/C:' + str(round(array_nt[2] / total_nt_tailing, 4)) +
+                        '/G:' + str(round(array_nt[3] / total_nt_tailing, 4)))
 
-                # calculate ratios of trimmed/tailed sequences
-                vals_len_trim = df['TRIM_LENGTH'].tolist()
-                vals_len_tail = df['TAIL_LENGTH'].tolist()
-                ratio_seq_trim = round(len(
-                    [x for x in vals_len_trim if x != 0]) / total_sequences, 4)
-                ratio_seq_tail = round(len(
-                    [x for x in vals_len_tail if x != 0]) / total_sequences, 4)
+                    # calculate ratios of trimmed/tailed sequences
+                    vals_len_trim = df['TRIM_LENGTH'].tolist()
+                    vals_len_tail = df['TAIL_LENGTH'].tolist()
+                    ratio_seq_trim = round(len(
+                        [x for x in vals_len_trim if x != 0]) /
+                        total_sequences, 4)
+                    ratio_seq_tail = round(len(
+                        [x for x in vals_len_tail if x != 0]) /
+                        total_sequences, 4)
 
-        # SECTION | DISPLAY HEADER AND SUMMARY STATISTICS #####################
-                with open(output[0], 'a') as out:
-                    out.write('===========================================\n' +
-                              mirna + '\n')
-                    out.write('**Motif: ' + motif + '\n')
-                    out.write('**Consensus: ' + consensus + '\n')
-                    out.write('**Total-Reads: ' + str(total_reads) + '\n')
-                    out.write('**Fidelity-5p: ' + str(fidelity) + '\n')
-                    out.write('**NT-Tailing: ' + ratio_nt_tailing + '\n')
-                    out.write('**Sequence-Trimming: ' +
-                              str(ratio_seq_trim) + '\n')
-                    out.write('**Sequence-Tailing: ' +
-                              str(ratio_seq_tail) + '\n')
+        # SECTION | DISPLAY HEADER AND SUMMARY STATISTICS #################
+                    with open(output[0], 'a') as out:
+                        out.write('=======================================\n' +
+                                  mirna + '\n')
+                        out.write('**Motif: ' + motif + '\n')
+                        out.write('**Consensus: ' + consensus + '\n')
+                        out.write('**Total-Reads: ' + str(total_reads) + '\n')
+                        out.write('**Fidelity-5p: ' + str(fidelity) + '\n')
+                        out.write('**NT-Tailing: ' + ratio_nt_tailing + '\n')
+                        out.write('**Sequence-Trimming: ' +
+                                  str(ratio_seq_trim) + '\n')
+                        out.write('**Sequence-Tailing: ' +
+                                  str(ratio_seq_tail) + '\n')
 
-        # SECTION | DISPLAY SEQUENCES AND SINGLE STATISTICS ###################
-                    df.to_csv(out, sep='\t', index=False)
+        # SECTION | DISPLAY SEQUENCES AND SINGLE STATISTICS ###############
+                        df.to_csv(out, sep='\t', index=False)

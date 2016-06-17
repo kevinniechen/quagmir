@@ -23,7 +23,6 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
   │   └── <b>YOUR_FILE_HERE.fastq_ready</b>
   |   ├── collapsed/
   ├── motif-consensus.fa
-  ├── requirements.txt
   └── results/
   </pre>
 
