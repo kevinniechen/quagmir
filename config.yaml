@@ -3,4 +3,4 @@
 min_ratio: .001
 min_read: 9
 
-max_mismatch_motif: 1
+# fuzzy_motif: true
