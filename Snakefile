@@ -8,10 +8,10 @@ files in /data folder and motif.txt"""
 
 import glob
 import csv
-import collections
+import collections as co
 import numpy as np
 import pandas as pd
-import regex
+import difflib
 from os.path import join
 from os.path import splitext
 from decimal import *
@@ -62,6 +62,16 @@ def get_tailing_seq_5p(seq, tail_len):
     else:
         return '-'
 
+
+def matches(large_string, query_string, threshold):
+    words = large_string.split()
+    for word in words:
+        s = difflib.SequenceMatcher(None, word, query_string)
+        match = ''.join(word[i:i + n]
+                        for i, j, n in s.get_matching_blocks() if n)
+        if len(match) / float(len(query_string)) >= threshold:
+            yield match
+
 ##########################################################################
 
 configfile:
@@ -102,6 +112,7 @@ rule analyze_isomir:
             mirna = value[0]
             consensus = value[1]
             table_out = []
+            freq_nt = co.defaultdict(lambda: co.defaultdict(int))
 
         # SECTION | GENERATE SINGLE STATISTICS ################################
             with open(str(input.collapsed_fasta), "rt") as sample:
@@ -110,8 +121,12 @@ rule analyze_isomir:
                 total_sequences = 0
                 for line in sample:
                     reads = line.rpartition(' ')[0]
-                    m = regex.findall("(AA){e<=1}", "CAAG")
-                    if motif in line:
+#                    if config['fuzzy_motif']:  # if fuzzy motif matching
+#                        if len(list(matches(motif, line, 0.8))) > 0:
+#                            motif_con = list(matches(motif, line, 0.8))[0]
+#                            total_reads += int(reads)
+#                            total_sequences += 1
+                    if motif in line:  # regular motif pull
                         total_reads += int(reads)
                         total_sequences += 1
 
@@ -151,6 +166,11 @@ rule analyze_isomir:
                                 seq_end_5p, consensus_end_5p, len_trim_5p))
                         annotation = ""
 
+                        # calculation of nt frequencies at each position
+                        nt_offset = seq_index_5p - consensus_index_5p
+                        for index, nt in enumerate(seq):
+                            freq_nt[nt][index - nt_offset] += num_reads
+
                         # ascertain sequences pulled in by several miRNA motifs
                         list_motifs = list(mirna_dict.keys())
                         matching_motifs = [
@@ -178,6 +198,8 @@ rule analyze_isomir:
                                                "ANNOTATION"])
                     df.sort_values(by="MIRNA_READS", ascending=0, inplace=1)
 
+                    df2 = pd.DataFrame(freq_nt).transpose()
+
         # SECTION | GENERATE SUMMARY STATISTICS ###############################
                     # calculate 5' fidelity score
                     vals_vari_5p = df['VARIATION_5P'].tolist()
@@ -191,7 +213,7 @@ rule analyze_isomir:
                     vals_tail_seq = df['TAIL_SEQUENCE'].tolist()
                     array_nt = [0, 0, 0, 0]  # A T C G
                     for seq_tail, read in zip(vals_tail_seq, vals_reads):
-                        count_nt = collections.Counter(seq_tail)
+                        count_nt = co.Counter(seq_tail)
                         array_nt[0] += (count_nt['A'] * read)
                         array_nt[1] += (count_nt['T'] * read)
                         array_nt[2] += (count_nt['C'] * read)
@@ -229,3 +251,4 @@ rule analyze_isomir:
 
         # SECTION | DISPLAY SEQUENCES AND SINGLE STATISTICS ###############
                         df.to_csv(out, sep='\t', index=False)
+                        df2.to_csv(out, sep='\t')
