@@ -1,4 +1,5 @@
 # QuagmiR
+![Logo](http://francky.me/images/quora001.png)
 A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 
 ## Dependencies
