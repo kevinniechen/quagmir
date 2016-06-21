@@ -152,7 +152,7 @@ rule analyze_isomir:
 
                         # calculation of single-statistics
                         ratio = round(
-                            float(num_reads) / float(total_reads), 6)
+                            float(num_reads) / float(total_reads), 4)
                         len_read = len(seq)
                         len_trim = calc_trimming(seq_end_3p, consensus_end_3p)
                         len_tail = calc_tailing(
@@ -198,7 +198,12 @@ rule analyze_isomir:
                                                "ANNOTATION"])
                     df.sort_values(by="MIRNA_READS", ascending=0, inplace=1)
 
-                    df2 = pd.DataFrame(freq_nt).transpose()
+                    df2 = pd.DataFrame(freq_nt).fillna(value=0)
+                    df2['TOTAL'] = df2.sum(axis=1)
+                    df2.loc[:, "A":"T"] = df2.loc[
+                        :, "A":"T"].div(df2["Reads"], axis=0)
+                    df2 = np.round(df2, decimals=4)
+                    df2.index.name = 'NT_POSITION'
 
         # SECTION | GENERATE SUMMARY STATISTICS ###############################
                     # calculate 5' fidelity score
@@ -250,5 +255,7 @@ rule analyze_isomir:
                                   str(ratio_seq_tail) + '\n')
 
         # SECTION | DISPLAY SEQUENCES AND SINGLE STATISTICS ###############
+                        out.write('\n[Sequence-Information]\n')
                         df.to_csv(out, sep='\t', index=False)
+                        out.write('\n[Nucleotide-Distribution]\n')
                         df2.to_csv(out, sep='\t')
