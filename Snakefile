@@ -233,16 +233,16 @@ rule analyze_isomir:
                     # calculate ratios of trimmed/tailed sequences
                     vals_len_trim = df['TRIM_LENGTH'].tolist()
                     vals_len_tail = df['TAIL_LENGTH'].tolist()
-                    ratio_seq_trim = round(len(
-                        [x for x in vals_len_trim if x != 0]) /
-                        total_sequences, 4)
-                    ratio_seq_tail = round(len(
-                        [x for x in vals_len_tail if x != 0]) /
-                        total_sequences, 4)
+                    ratio_seq_trim = round((len(
+                        [x for x in vals_len_trim if x != 0]) * num_reads) /
+                        total_reads, 4)
+                    ratio_seq_tail = round((len(
+                        [x for x in vals_len_tail if x != 0]) * num_reads) /
+                        total_reads, 4)
 
         # SECTION | DISPLAY HEADER AND SUMMARY STATISTICS #################
                     with open(output[0], 'a') as out:
-                        out.write('=======================================\n' +
+                        out.write('==========================\n' +
                                   mirna + '\n')
                         out.write('**Motif: ' + motif + '\n')
                         out.write('**Consensus: ' + consensus + '\n')
