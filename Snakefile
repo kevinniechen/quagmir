@@ -199,9 +199,9 @@ rule analyze_isomir:
                     df.sort_values(by="MIRNA_READS", ascending=0, inplace=1)
 
                     df2 = pd.DataFrame(freq_nt).fillna(value=0)
-                    df2['TOTAL'] = df2.sum(axis=1)
+                    df2['READS'] = df2.sum(axis=1)
                     df2.loc[:, "A":"T"] = df2.loc[
-                        :, "A":"T"].div(df2["Reads"], axis=0)
+                        :, "A":"T"].div(df2["READS"], axis=0)
                     df2 = np.round(df2, decimals=4)
                     df2.index.name = 'NT_POSITION'
 
