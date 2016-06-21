@@ -36,13 +36,13 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
   CCGACACCCTGGCCGGGTTGT
   ```
 
-2.5. Edit the **config.yaml** file to change configuration options if needed (default values fine in most use cases):
+3. Edit the **config.yaml** file to change configuration options if needed (default values fine in most use cases):
   ```
   min_ratio: .001
   min_read: 9
   ```
 
-3. Run pipeline: `snakemake`
+4. Run pipeline: `snakemake`
 
 ## Notes
 The step of collapsing sample files takes the longest time, but once the samples are collapsed, and you need to re-run the pipeline, the pipeline will automatically start from the collapsed files and take a far shorter amount of time
