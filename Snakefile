@@ -12,6 +12,7 @@ import collections as co
 import numpy as np
 import pandas as pd
 import difflib
+import mmap
 from os.path import join
 from os.path import splitext
 from decimal import *
@@ -63,16 +64,28 @@ def get_tailing_seq_5p(seq, tail_len):
         return '-'
 
 
-# def matches(large_string, query_string, threshold):
-#    words = large_string.split()
-#    for word in words:
-#        s = difflib.SequenceMatcher(None, word, query_string)
-#        match = ''.join(word[i:i + n]
-#                        for i, j, n in s.get_matching_blocks() if n)
-#      if len(match) / float(len(query_string)) >= threshold:
-#            yield match
+def find_in_file(file, string):
+    try:
+        with open(file, 'r') as f, \
+            mmap.mmap(f.fileno(), 0,
+                      access=mmap.ACCESS_READ) as s:
+            if s.find(bytes(string, 'utf-8')) != -1:
+                return True
+    except FileNotFoundError:
+        return False
+    else:
+        return False
 
-##########################################################################
+    # def matches(large_string, query_string, threshold):
+    #    words = large_string.split()
+    #    for word in words:
+    #        s = difflib.SequenceMatcher(None, word, query_string)
+    #        match = ''.join(word[i:i + n]
+    #                        for i, j, n in s.get_matching_blocks() if n)
+    #      if len(match) / float(len(query_string)) >= threshold:
+    #            yield match
+
+    ###################################################################
 
 configfile:
     "config.yaml"
@@ -119,6 +132,7 @@ rule analyze_isomir:
                 # calculate total reads
                 total_reads = 0
                 total_sequences = 0
+                pulled_lines = []
                 for line in sample:
                     reads = line.rpartition(' ')[0]
 #                    if config['fuzzy_motif']:  # if fuzzy motif matching
@@ -126,16 +140,30 @@ rule analyze_isomir:
 #                            motif_con = list(matches(motif, line, 0.8))[0]
 #                            total_reads += int(reads)
 #                            total_sequences += 1
-                    if motif in line:  # regular motif pull
+                    if motif in line:
+                        pulled_lines.append(line)
                         total_reads += int(reads)
                         total_sequences += 1
 
                 if total_reads > 0:
-                    sample.seek(0)
-                    gen = (z for z in sample if motif in z)
-                    for line in gen:
+                    for line in pulled_lines:
                         num_reads = int(line.rpartition(' ')[0])
                         seq = line.rpartition(' ')[2].rstrip()
+
+                        # ascertain sequences pulled in by several miRNA motifs
+                        annotation = ""
+                        list_motifs = list(mirna_dict.keys())
+                        matching_motifs = [
+                            x for x in list_motifs if x in line if x != motif]
+                        for matched_motif in matching_motifs:
+                            annotation += mirna_dict[matched_motif][0]
+                            annotation += " "
+
+                        # option for not counting same sequence multiple times
+                        if config['destructive_motif_pull']:
+                            if len(annotation) > 0:  # maps to multiple miR
+                                if find_in_file(output[0], seq):  # check prev
+                                    continue
 
                         # sequence manipulations
                         consensus_index_3p = str.find(
@@ -164,21 +192,13 @@ rule analyze_isomir:
                             len_trim_5p,
                             calc_tailing(
                                 seq_end_5p, consensus_end_5p, len_trim_5p))
-                        annotation = ""
 
                         # calculation of nt frequencies at each position
                         nt_offset = seq_index_5p - consensus_index_5p
                         for index, nt in enumerate(seq):
                             freq_nt[nt][index - nt_offset] += num_reads
 
-                        # ascertain sequences pulled in by several miRNA motifs
-                        list_motifs = list(mirna_dict.keys())
-                        matching_motifs = [
-                            x for x in list_motifs if x in line if x != motif]
-                        for matched_motif in matching_motifs:
-                            annotation += mirna_dict[matched_motif][0]
-                            annotation += " "
-
+                        # if sequence has minimum reads, add to display queue
                         if ((ratio > config['min_ratio']) or
                                 (num_reads > config['min_read'])):
                             table_out.append([seq, len_read, num_reads, ratio,
@@ -223,12 +243,14 @@ rule analyze_isomir:
                         array_nt[1] += (count_nt['C'] * read)
                         array_nt[2] += (count_nt['G'] * read)
                         array_nt[3] += (count_nt['T'] * read)
-                    total_nt_tailing = sum(array_nt)
-                    ratio_nt_tailing = (
-                        '\t' + str(round(array_nt[0] / total_nt_tailing, 4)) +
-                        '\t' + str(round(array_nt[1] / total_nt_tailing, 4)) +
-                        '\t' + str(round(array_nt[2] / total_nt_tailing, 4)) +
-                        '\t' + str(round(array_nt[3] / total_nt_tailing, 4)))
+                    total_nt_tail = sum(array_nt)
+                    ratio_nt_tailing = "nan"
+                    if total_nt_tail > 0:
+                        ratio_nt_tailing = (
+                            '\t' + str(round(array_nt[0] / total_nt_tail, 4)) +
+                            '\t' + str(round(array_nt[1] / total_nt_tail, 4)) +
+                            '\t' + str(round(array_nt[2] / total_nt_tail, 4)) +
+                            '\t' + str(round(array_nt[3] / total_nt_tail, 4)))
 
                     # calculate ratios of trimmed/tailed sequences
                     ratio_seq_trim = 0

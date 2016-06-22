@@ -1,5 +1,4 @@
-# if a sequence fulfills either of these minimum requirements, it will be visible
-# summary statistics beginning with ** still perform calculations on the hidden sequences
+# DISPLAY
 min_ratio: .001
 min_read: 9
 
@@ -7,4 +6,5 @@ display_summary: True
 display_sequence_info: True
 display_nucleotide_dist: True
 
-# fuzzy_motif: true
+# FUNCTION
+destructive_motif_pull: True
