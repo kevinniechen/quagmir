@@ -63,14 +63,14 @@ def get_tailing_seq_5p(seq, tail_len):
         return '-'
 
 
-def matches(large_string, query_string, threshold):
-    words = large_string.split()
-    for word in words:
-        s = difflib.SequenceMatcher(None, word, query_string)
-        match = ''.join(word[i:i + n]
-                        for i, j, n in s.get_matching_blocks() if n)
-        if len(match) / float(len(query_string)) >= threshold:
-            yield match
+# def matches(large_string, query_string, threshold):
+#    words = large_string.split()
+#    for word in words:
+#        s = difflib.SequenceMatcher(None, word, query_string)
+#        match = ''.join(word[i:i + n]
+#                        for i, j, n in s.get_matching_blocks() if n)
+#      if len(match) / float(len(query_string)) >= threshold:
+#            yield match
 
 ##########################################################################
 
@@ -225,20 +225,22 @@ rule analyze_isomir:
                         array_nt[3] += (count_nt['G'] * read)
                     total_nt_tailing = sum(array_nt)
                     ratio_nt_tailing = (
-                        'A:' + str(round(array_nt[0] / total_nt_tailing, 4)) +
-                        '/T:' + str(round(array_nt[1] / total_nt_tailing, 4)) +
-                        '/C:' + str(round(array_nt[2] / total_nt_tailing, 4)) +
-                        '/G:' + str(round(array_nt[3] / total_nt_tailing, 4)))
+                        '\t' + str(round(array_nt[0] / total_nt_tailing, 4)) +
+                        '\t' + str(round(array_nt[1] / total_nt_tailing, 4)) +
+                        '\t' + str(round(array_nt[2] / total_nt_tailing, 4)) +
+                        '\t' + str(round(array_nt[3] / total_nt_tailing, 4)))
 
                     # calculate ratios of trimmed/tailed sequences
+                    ratio_seq_trim = 0
+                    ratio_seq_tail = 0
                     vals_len_trim = df['TRIM_LENGTH'].tolist()
                     vals_len_tail = df['TAIL_LENGTH'].tolist()
-                    ratio_seq_trim = round((len(
-                        [x for x in vals_len_trim if x != 0]) * num_reads) /
-                        total_reads, 4)
-                    ratio_seq_tail = round((len(
-                        [x for x in vals_len_tail if x != 0]) * num_reads) /
-                        total_reads, 4)
+                    for len_trim, read in zip(vals_len_trim, vals_reads):
+                        if len_trim > 0:
+                            ratio_seq_trim += round(read / total_reads, 4)
+                    for len_tail, read in zip(vals_len_tail, vals_reads):
+                        if len_tail > 0:
+                            ratio_seq_tail += round(read / total_reads, 4)
 
         # SECTION | DISPLAY HEADER AND SUMMARY STATISTICS #################
                     with open(output[0], 'a') as out:
@@ -248,7 +250,8 @@ rule analyze_isomir:
                         out.write('**Consensus: ' + consensus + '\n')
                         out.write('**Total-Reads: ' + str(total_reads) + '\n')
                         out.write('**Fidelity-5p: ' + str(fidelity) + '\n')
-                        out.write('**NT-Tailing: ' + ratio_nt_tailing + '\n')
+                        out.write('**ATCG-Tailing: ' +
+                                  ratio_nt_tailing + '\n')
                         out.write('**Sequence-Trimming: ' +
                                   str(ratio_seq_trim) + '\n')
                         out.write('**Sequence-Tailing: ' +
