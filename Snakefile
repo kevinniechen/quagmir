@@ -220,9 +220,9 @@ rule analyze_isomir:
                     for seq_tail, read in zip(vals_tail_seq, vals_reads):
                         count_nt = co.Counter(seq_tail)
                         array_nt[0] += (count_nt['A'] * read)
-                        array_nt[1] += (count_nt['T'] * read)
-                        array_nt[2] += (count_nt['C'] * read)
-                        array_nt[3] += (count_nt['G'] * read)
+                        array_nt[1] += (count_nt['C'] * read)
+                        array_nt[2] += (count_nt['G'] * read)
+                        array_nt[3] += (count_nt['T'] * read)
                     total_nt_tailing = sum(array_nt)
                     ratio_nt_tailing = (
                         '\t' + str(round(array_nt[0] / total_nt_tailing, 4)) +
@@ -244,21 +244,25 @@ rule analyze_isomir:
 
         # SECTION | DISPLAY HEADER AND SUMMARY STATISTICS #################
                     with open(output[0], 'a') as out:
-                        out.write('==========================\n' +
-                                  mirna + '\n')
-                        out.write('**Motif: ' + motif + '\n')
-                        out.write('**Consensus: ' + consensus + '\n')
-                        out.write('**Total-Reads: ' + str(total_reads) + '\n')
-                        out.write('**Fidelity-5p: ' + str(fidelity) + '\n')
-                        out.write('**ATCG-Tailing: ' +
-                                  ratio_nt_tailing + '\n')
-                        out.write('**Sequence-Trimming: ' +
-                                  str(ratio_seq_trim) + '\n')
-                        out.write('**Sequence-Tailing: ' +
-                                  str(ratio_seq_tail) + '\n')
+                        if config['display_summary']:
+                            out.write('==========================\n' +
+                                      mirna + '\n')
+                            out.write('**Motif: ' + motif + '\n')
+                            out.write('**Consensus: ' + consensus + '\n')
+                            out.write('**Total-Reads: ' +
+                                      str(total_reads) + '\n')
+                            out.write('**Fidelity-5p: ' + str(fidelity) + '\n')
+                            out.write('**ACGT-Tailing: ' +
+                                      ratio_nt_tailing + '\n')
+                            out.write('**Sequence-Trimming: ' +
+                                      str(ratio_seq_trim) + '\n')
+                            out.write('**Sequence-Tailing: ' +
+                                      str(ratio_seq_tail) + '\n')
 
         # SECTION | DISPLAY SEQUENCES AND SINGLE STATISTICS ###############
-                        out.write('\n[Sequence-Information]\n')
-                        df.to_csv(out, sep='\t', index=False)
-                        out.write('\n[Nucleotide-Distribution]\n')
-                        df2.to_csv(out, sep='\t')
+                        if config['display_sequence_info']:
+                            out.write('\n[Sequence-Information]\n')
+                            df.to_csv(out, sep='\t', index=False)
+                        if config['display_nucleotide_dist']:
+                            out.write('\n[Nucleotide-Distribution]\n')
+                            df2.to_csv(out, sep='\t')

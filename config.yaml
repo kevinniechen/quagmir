@@ -3,4 +3,8 @@
 min_ratio: .001
 min_read: 9
 
+display_summary: True
+display_sequence_info: True
+display_nucleotide_dist: True
+
 # fuzzy_motif: true
