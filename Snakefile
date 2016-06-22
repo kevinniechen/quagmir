@@ -23,10 +23,8 @@ from Bio import SeqIO
 ###############################################################################
 
 MOTIF_CONSENSUS = 'motif-consensus.fa'
-
+TIMESTAMP = time.strftime('%d-%b-%Y@%I:%M:%S%p')
 SAMPLES = [os.path.basename(f) for f in glob.glob('data/*.fastq_ready')]
-
-TIMESTR = time.strftime("%Y%m%d-%H%M%S")
 
 ###############################################################################
 
@@ -96,7 +94,7 @@ configfile:
 
 rule all:
     input:
-        expand("results/{A}.results.txt", A=SAMPLES)
+        expand("results/tabular/{A}.txt", A=SAMPLES)
 
 rule collapse_fastq:
     input:
@@ -111,26 +109,21 @@ rule analyze_isomir:
         motif_consensus = MOTIF_CONSENSUS,
         collapsed_fasta = 'data/collapsed/{A}.collapsed'
     output:
-        "results/{A}.results.txt"
+        "results/tabular/{A}.txt"
     log:
-        "logs/{A}%s", TIMESTR
+        os.path.join("logs/", TIMESTAMP)
     run:
-        # SECTION | DISPLAY CONFIGURATION OPTIONS #########################
-        with open(output[0], 'a') as out:
-            out.write('QuagmiR-generated@' + TIMESTR + '\n')
-            for key, val in config.items():
-                out.write(str(key) + ':\t' + str(val) + '\n')
-            out.write('\n')
-
-        # SECTION | LOG CONFIG ################################################
+        # SECTION | SETUP LOGGER AND LOG CONFIG ###############################
         logging.basicConfig(
             filename=log[0],
             level=logging.DEBUG,
-            format='%(asctime)s %(message)s')
-        logging.info('----')
-        for key, val in config.items():
-            logging.info(key)
-            logging.info(val)
+            format='%(levelname)s: %(message)s')
+        if os.stat(log[0]).st_size == 0:  # per-run log
+            logging.info("Motif-consensus file: " + input.motif_consensus)
+            for key, val in config.items():
+                logging.info(str(key) + ':\t' + str(val))
+            config_logged = True
+        logging.debug("Start sample: " + input.collapsed_fasta)
 
         # SECTION | SETUP MIRNA INFO DICT #####################################
         dict_mirna = co.OrderedDict()
@@ -148,6 +141,7 @@ rule analyze_isomir:
             consensus = value[1]
             table_out = []
             freq_nt = co.defaultdict(lambda: co.defaultdict(int))
+            logging.debug("Start motif: " + motif + ' mirna: ' + mirna)
 
         # SECTION | GENERATE SINGLE STATISTICS ################################
             with open(str(input.collapsed_fasta), "rt") as sample:
@@ -183,7 +177,8 @@ rule analyze_isomir:
                         if config['destructive_motif_pull']:
                             if len(annotation) > 0:  # maps to multiple miR
                                 if find_in_file(output[0], seq):  # check prev
-
+                                    logging.warning(
+                                        'Skipped ' + seq + ' ' + mirna)
                                     continue
 
                         # sequence manipulations
