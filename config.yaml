@@ -8,3 +8,6 @@ display_nucleotide_dist: True
 
 # FUNCTION
 destructive_motif_pull: False
+
+# INPUT
+motif_consensus_file: 'motif-consensus.fa'

@@ -22,7 +22,6 @@ from Bio import SeqIO
 
 ###############################################################################
 
-MOTIF_CONSENSUS = 'motif-consensus.fa'
 TIMESTAMP = time.strftime('%d-%b-%Y@%I:%M:%S%p')
 SAMPLES = [os.path.basename(f) for f in glob.glob('data/*.fastq_ready')]
 
@@ -106,7 +105,7 @@ rule collapse_fastq:
 
 rule analyze_isomir:
     input:
-        motif_consensus = MOTIF_CONSENSUS,
+        motif_consensus = config['motif_consensus_file'],
         collapsed_fasta = 'data/collapsed/{A}.collapsed'
     output:
         "results/tabular/{A}.txt"
@@ -119,11 +118,12 @@ rule analyze_isomir:
             level=logging.DEBUG,
             format='%(levelname)s: %(message)s')
         if os.stat(log[0]).st_size == 0:  # per-run log
-            logging.info("Motif-consensus file: " + input.motif_consensus)
             for key, val in config.items():
                 logging.info(str(key) + ':\t' + str(val))
             config_logged = True
         logging.debug("Start sample: " + input.collapsed_fasta)
+        with open(output[0], 'a') as out:
+            out.write(TIMESTAMP + '\n')
 
         # SECTION | SETUP MIRNA INFO DICT #####################################
         dict_mirna = co.OrderedDict()
