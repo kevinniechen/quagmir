@@ -13,6 +13,7 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 
 ## Usage
 
+0. Activate your conda environment: `source activate quagmir`
 1. Add your .fastq_ready samples into the data folder (a sample has been provided for testing):
   <pre>
   ├── LICENSE
