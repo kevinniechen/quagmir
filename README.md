@@ -13,8 +13,8 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 
 ## Usage
 
-0. Activate your conda environment: `source activate quagmir`
-1. Add your .fastq_ready samples into the data folder (a sample has been provided for testing):
+1. Activate your conda environment: `source activate quagmir`
+2. Add your .fastq_ready samples into the data folder (a sample has been provided for testing):
   <pre>
   ├── LICENSE
   ├── README.md
@@ -29,7 +29,7 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
   │   └── tabular/
   </pre>
 
-2. Edit the **motif-consensus.fa** file to insert your miRNA information with the following format:
+3. Edit the **motif-consensus.fa** file to insert your miRNA information with the following format:
   ```
   >miRNA_name miRNA_motif
   miRNA_consensus_sequence
@@ -38,7 +38,7 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
   CCGACACCCTGGCCGGGTTGT
   ```
 
-3. Edit the **config.yaml** file to change configuration options if needed (default values fine in most use cases):
+4. Edit the **config.yaml** file to change configuration options if needed (default values fine in most use cases):
   ```
   # DISPLAY
   min_ratio: .001
@@ -55,7 +55,7 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
   motif_consensus_file: 'motif-consensus.fa' 
   ```
 
-4. Run pipeline: `snakemake`
+5. Run pipeline: `snakemake`
 
 ## Notes
 The step of collapsing sample files takes the longest time, but once the samples are collapsed, and you need to re-run the pipeline, the pipeline will automatically start from the collapsed files and take a far shorter amount of time
