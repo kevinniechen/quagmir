@@ -93,7 +93,8 @@ configfile:
 
 rule all:
     input:
-        expand("results/tabular/{A}.txt", A=SAMPLES)
+        expand('results/tabular/{A}.isomir.tsv', A=SAMPLES),
+        expand('results/text/{A}.mirna.txt', A=SAMPLES)
 
 rule collapse_fastq:
     input:
@@ -108,7 +109,7 @@ rule analyze_isomir:
         motif_consensus = config['motif_consensus_file'],
         collapsed_fasta = 'data/collapsed/{A}.collapsed'
     output:
-        "results/tabular/{A}.txt"
+        "results/tabular/{A}.isomir.tsv"
     log:
         os.path.join("logs/", TIMESTAMP)
     run:
@@ -284,24 +285,40 @@ rule analyze_isomir:
                     with open(output[0], 'a') as out:
                         if config['display_summary']:
                             out.write('==========================\n' +
-                                      mirna + '\n')
-                            out.write('**Motif:\t' + motif + '\n')
-                            out.write('**Consensus:\t' + consensus + '\n')
-                            out.write('**Total-Reads:\t' +
+                                      '>' + mirna + '\n')
+                            out.write('motif:\t' + motif + '\n')
+                            out.write('consensus:\t' + consensus + '\n')
+                            out.write('total-reads:\t' +
                                       str(total_reads) + '\n')
-                            out.write('**Fidelity-5p:\t' +
+                            out.write('fidelity-5p:\t' +
                                       str(fidelity) + '\n')
-                            out.write('**ACGT-Tailing:\t' +
+                            out.write('ACGT-tailing:\t' +
                                       ratio_nt_tailing + '\n')
-                            out.write('**Sequence-Trimming:\t' +
+                            out.write('sequence-trimming:\t' +
                                       str(ratio_seq_trim) + '\n')
-                            out.write('**Sequence-Tailing:\t' +
+                            out.write('sequence-tailing:\t' +
                                       str(ratio_seq_tail) + '\n')
+                            out.write('\n')
 
         # SECTION | DISPLAY SEQUENCES AND SINGLE STATISTICS ###############
                         if config['display_sequence_info']:
-                            out.write('\n[Sequence-Information]\n')
+                            out.write('[sequence-information]\n')
                             df.to_csv(out, sep='\t', index=False)
+                            out.write('\n')
                         if config['display_nucleotide_dist']:
-                            out.write('\n[Nucleotide-Distribution]\n')
+                            out.write('[nucleotide-distribution]\n')
                             df2.to_csv(out, sep='\t')
+                            out.write('\n')
+
+rule summarize_fastq:
+    input:
+        'data/{A}',
+        'results/tabular/{A}.isomir.tsv'
+    output:
+        'results/text/{A}.mirna.txt'
+    shell:
+        """
+        total_reads=$(cat {input[0]} | echo $((`wc -l`/4)))
+        echo "Total miR reads in sample: $total_reads\n" >> {output}
+        grep ">hsa\|total-reads" {input[1]} >> {output}
+        """
