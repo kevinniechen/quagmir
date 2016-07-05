@@ -1,11 +1,5 @@
 #!/usr/bin/env python
 
-""" A pipeline to analyze
-raw miRNA-seq files for
-isomiR composition.
-Currently takes in .fastq_ready
-files in /data folder and motif.txt"""
-
 import glob
 import csv
 import collections as co
