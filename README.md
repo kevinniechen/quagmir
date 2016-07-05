@@ -25,6 +25,7 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
   |   ├── collapsed/
   ├── motif-consensus.fa
   └── results/
+  │   └── tabular/
   </pre>
 
 2. Edit the **motif-consensus.fa** file to insert your miRNA information with the following format:
@@ -38,8 +39,19 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 
 3. Edit the **config.yaml** file to change configuration options if needed (default values fine in most use cases):
   ```
+  # DISPLAY
   min_ratio: .001
   min_read: 9
+
+  display_summary: True
+  display_sequence_info: True
+  display_nucleotide_dist: True
+
+  # FUNCTION
+  destructive_motif_pull: False
+
+  # INPUT
+  motif_consensus_file: 'motif-consensus.fa' 
   ```
 
 4. Run pipeline: `snakemake`
