@@ -28,10 +28,93 @@
         </ul>
       </header>
       <section>
-        <h3>
-<a id="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Welcome to GitHub Pages.</h3>
+        <h1>
+<a id="quagmir" class="anchor" href="#quagmir" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>QuagmiR</h1>
 
-<p>This automatic page generator is the easiest way to create beautiful pages for all of your projects. Author your page content here <a href="https://guides.github.com/features/mastering-markdown/">using GitHub Flavored Markdown</a>, select a template crafted by a designer, and publish. After your page is generated, you can check out the new <code>gh-pages</code> branch locally. If you’re using GitHub Desktop, simply sync your repository and you’ll see the new branch.</p>
+<p>A python-based miRNA sequencing pipeline for isomiR quantification and analysis</p>
+
+<h2>
+<a id="dependencies" class="anchor" href="#dependencies" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Dependencies</h2>
+
+<ul>
+<li>Make sure that you have <a href="https://www.python.org/downloads/">Python 3.4+</a> installed (type <code>python --version</code> in the console) </li>
+<li>Make sure you have the latest version of pip: <code>pip3 install -U pip</code>
+</li>
+<li>Make sure you have <a href="http://conda.pydata.org/docs/install/quick.html">Miniconda</a> installed</li>
+</ul>
+
+<h2>
+<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Installation</h2>
+
+<ol>
+<li>Download repository: <code>git clone https://github.com/kevchn/quagmir</code>
+</li>
+<li>Go into local quagmir folder: <code>cd quagmir</code>
+</li>
+<li>Install Python dependencies: <code>conda create -n quagmir python=3 --file req.txt</code>
+</li>
+</ol>
+
+<h2>
+<a id="usage" class="anchor" href="#usage" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Usage</h2>
+
+<ol>
+<li>Activate your conda environment: <code>source activate quagmir</code>
+</li>
+<li>
+<p>Add your .fastq_ready samples into the data folder (a sample has been provided for testing):</p>
+
+<pre>
+├── LICENSE
+├── README.md
+├── config.yaml
+├── Snakefile
+├── data/
+│   ├── sample.fastq_ready
+│   └── <b>YOUR_FILE_HERE.fastq_ready</b>
+|   ├── collapsed/
+├── motif-consensus.fa
+└── results/
+│   └── tabular/
+</pre>
+</li>
+<li>
+<p>Edit the <strong>motif-consensus.fa</strong> file to insert your miRNA information with the following format:</p>
+
+<pre><code>&gt;miRNA_name miRNA_motif
+miRNA_consensus_sequence
+
+&gt;passenger-shRNA-mir21-ORF59-5p-1 ACACCCTGGCCGGGT
+CCGACACCCTGGCCGGGTTGT
+</code></pre>
+</li>
+<li>
+<p>Edit the <strong>config.yaml</strong> file to change configuration options if needed (default values fine in most use cases):</p>
+
+<pre><code># DISPLAY
+min_ratio: .001
+min_read: 9
+
+display_summary: True
+display_sequence_info: True
+display_nucleotide_dist: True
+
+# FUNCTION
+destructive_motif_pull: False
+
+# INPUT
+motif_consensus_file: 'motif-consensus.fa' 
+</code></pre>
+</li>
+<li><p>Run pipeline: <code>snakemake</code></p></li>
+</ol>
+
+<h2>
+<a id="notes" class="anchor" href="#notes" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Notes</h2>
+
+<p>The step of collapsing sample files takes the longest time, but once the samples are collapsed, and you need to re-run the pipeline, the pipeline will automatically start from the collapsed files and take a far shorter amount of time</p>
+
+<p>Output will be a <strong>sample.fastq_ready.results.txt</strong> file for each sample in the <strong>results/</strong> folder</p>
       </section>
       <footer>
         <p>This project is maintained by <a href="https://github.com/kevchn">kevchn</a></p>
