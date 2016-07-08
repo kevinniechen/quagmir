@@ -4,6 +4,7 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 ![alt tag](https://img.shields.io/github/issues/kevchn/quagmir.svg)
 ![alt tag](https://img.shields.io/wercker/ci/wercker/docs.svg)
 ![alt tag](https://img.shields.io/dub/l/vibe-d.svg)
+![alt tag](http://g.recordit.co/GbfgMIq28L.gif)
 
 ## Dependencies
 * Make sure that you have [Python 3.4+](https://www.python.org/downloads/) installed (type `python --version` in the console) 
@@ -15,7 +16,7 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 2. Go into local quagmir folder: `cd quagmir`
 3. Install Python dependencies: `conda create -n quagmir python=3 --file req.txt`
 
-## Usage
+## Quickstart
 
 1. Activate your conda environment: `source activate quagmir`
 2. Add your .fastq_ready samples into the data folder (a sample has been provided for testing):
