@@ -1,3 +1,4 @@
+![alt tag](https://img.shields.io/dub/l/vibe-d.svg)
 # QuagmiR
 A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 
