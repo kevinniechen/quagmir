@@ -1,13 +1,6 @@
 # This file may be used to create an environment using:
 # $ conda create --name <env> --file <this file>
 # platform: osx-64
-dropbox=5.2.1=py35_0
-filechunkio=1.6=py35_0
-ftputil=3.2=py35_0
-pysftp=0.2.8=py35_0
-python-dateutil=2.3=py35_0
-snakemake=3.7.1=py35_0
-urllib3=1.12=py35_0
 biopython=1.67=np111py35_0
 docutils=0.12=py35_2
 ecdsa=0.13=py35_0
@@ -21,7 +14,6 @@ pycrypto=2.6.1=py35_4
 python=3.5.1=0
 pytz=2016.4=py35_0
 pyyaml=3.11=py35_4
-zlib=1.2.8=1
 readline=6.2=2
 requests=2.10.0=py35_0
 setuptools=23.0.0=py35_0
