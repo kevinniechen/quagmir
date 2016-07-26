@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 
+"""
+Author: K. Chen
+Affiliation: NCI/NIH
+Aim: Python-based isomiR quantification and analysis pipeline.
+Date: Mon Nov  2 14:03:11 CET 2015
+Run: snakemake
+"""
+
 import glob
 import csv
 import collections as co
@@ -303,6 +311,12 @@ rule analyze_isomir:
                             out.write('[nucleotide-distribution]\n')
                             df2.to_csv(out, sep='\t')
                             out.write('\n')
+                else:
+                    raise Exception("\n****************************************\n" +
+                                    "NO READS FOUND IN '" + input.collapsed_fasta + "'\n" +
+                                    "PLEASE CHECK YOUR FASTQ_READY FILE FORMAT\n" +
+                                    "AND FIX OR DELETE BEFORE RERUNNING PIPELINE\n" +
+                                    "****************************************\n")
 
 rule summarize_fastq:
     input:
@@ -314,5 +328,5 @@ rule summarize_fastq:
         """
         total_reads=$(cat {input[0]} | echo $((`wc -l`/4)))
         echo "Total miR reads in sample: $total_reads\n" >> {output}
-        grep ">hsa\|total-reads" {input[1]} >> {output}
+        grep ">hsa\|total-reads" {input[1]} | cat >> {output}
         """
