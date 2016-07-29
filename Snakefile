@@ -309,8 +309,12 @@ rule analyze_isomir:
                                       ratio_t_tailing + '\n')
                             out.write('sequence-trimming-only:\t' +
                                       str(ratio_seq_trim_only) + '\n')
+                            out.write('sequence-trimming:\t' +
+                                      str(ratio_seq_trim_only + ratio_seq_trim_and_tail) + '\n')
                             out.write('sequence-tailing-only:\t' +
                                       str(ratio_seq_tail_only) + '\n')
+                            out.write('sequence-tailing:\t' +
+                                      str(ratio_seq_tail_only + ratio_seq_trim_and_tail) + '\n')
                             out.write('sequence-trimming-and-tailing:\t' +
                                       str(ratio_seq_trim_and_tail) + '\n')
                             out.write('\n')
