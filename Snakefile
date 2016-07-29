@@ -263,25 +263,30 @@ rule analyze_isomir:
                         array_nt[2] += (count_nt['G'] * read)
                         array_nt[3] += (count_nt['T'] * read)
                     total_nt_tail = sum(array_nt)
-                    ratio_nt_tailing = "nan"
+                    ratio_a_tailing = "nan"
+                    ratio_c_tailing = "nan"
+                    ratio_g_tailing = "nan"
+                    ratio_t_tailing = "nan"
                     if total_nt_tail > 0:
-                        ratio_nt_tailing = (
-                            str(round(array_nt[0] / total_nt_tail, 4)) +
-                            '\t' + str(round(array_nt[1] / total_nt_tail, 4)) +
-                            '\t' + str(round(array_nt[2] / total_nt_tail, 4)) +
-                            '\t' + str(round(array_nt[3] / total_nt_tail, 4)))
+                        ratio_a_tailing = str(round(array_nt[0] / total_nt_tail, 4))
+                        ratio_c_tailing = str(round(array_nt[1] / total_nt_tail, 4))
+                        ratio_g_tailing = str(round(array_nt[2] / total_nt_tail, 4))
+                        ratio_t_tailing = str(round(array_nt[3] / total_nt_tail, 4))
 
                     # calculate ratios of trimmed/tailed sequences
-                    ratio_seq_trim = 0
-                    ratio_seq_tail = 0
+                    ratio_seq_trim_only = 0
+                    ratio_seq_tail_only = 0
+                    ratio_seq_trim_and_tail = 0
                     vals_len_trim = df['LEN_TRIM'].tolist()
                     vals_len_tail = df['LEN_TAIL'].tolist()
-                    for len_trim, read in zip(vals_len_trim, vals_reads):
-                        if len_trim > 0:
-                            ratio_seq_trim += round(read / total_reads, 4)
-                    for len_tail, read in zip(vals_len_tail, vals_reads):
-                        if len_tail > 0:
-                            ratio_seq_tail += round(read / total_reads, 4)
+                    for len_trim, len_tail, read in zip(vals_len_trim, vals_len_tail, vals_reads):
+                        read_ratio = round(read / total_reads, 4)
+                        if len_trim > 0 and len_tail == 0:
+                            ratio_seq_trim_only += read_ratio
+                        if len_tail > 0 and len_trim == 0:
+                            ratio_seq_tail_only += read_ratio
+                        if len_trim > 0 and len_tail > 0:
+                            ratio_seq_trim_and_tail += read_ratio
 
         # SECTION | DISPLAY HEADER AND SUMMARY STATISTICS #################
                     with open(output[0], 'a') as out:
@@ -294,12 +299,20 @@ rule analyze_isomir:
                                       str(total_reads) + '\n')
                             out.write('fidelity-5p:\t' +
                                       str(fidelity) + '\n')
-                            out.write('ACGT-tailing:\t' +
-                                      ratio_nt_tailing + '\n')
-                            out.write('sequence-trimming:\t' +
-                                      str(ratio_seq_trim) + '\n')
-                            out.write('sequence-tailing:\t' +
-                                      str(ratio_seq_tail) + '\n')
+                            out.write('A-tailing:\t' +
+                                      ratio_a_tailing + '\n')
+                            out.write('C-tailing:\t' +
+                                      ratio_c_tailing + '\n')
+                            out.write('G-tailing:\t' +
+                                      ratio_g_tailing + '\n')
+                            out.write('T-tailing:\t' +
+                                      ratio_t_tailing + '\n')
+                            out.write('sequence-trimming-only:\t' +
+                                      str(ratio_seq_trim_only) + '\n')
+                            out.write('sequence-tailing-only:\t' +
+                                      str(ratio_seq_tail_only) + '\n')
+                            out.write('sequence-trimming-and-tailing:\t' +
+                                      str(ratio_seq_trim_and_tail) + '\n')
                             out.write('\n')
 
         # SECTION | DISPLAY SEQUENCES AND SINGLE STATISTICS ###############
