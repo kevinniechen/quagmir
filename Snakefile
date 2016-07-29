@@ -344,6 +344,7 @@ rule summarize_fastq:
     shell:
         """
         total_reads=$(cat {input[0]} | echo $((`wc -l`/4)))
-        echo "Total miR reads in sample: $total_reads\n" >> {output}
+        echo "Total miR reads in sample: $total_reads" >> {output}
         grep ">hsa\|total-reads" {input[1]} | cat >> {output}
+        echo "\n" >> {output}
         """
