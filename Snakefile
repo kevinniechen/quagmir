@@ -4,7 +4,6 @@
 Author: K. Chen
 Affiliation: NCI/NIH
 Aim: Python-based isomiR quantification and analysis pipeline.
-Date: Mon Nov  2 14:03:11 CET 2015
 Run: snakemake
 """
 
@@ -79,6 +78,23 @@ def find_in_file(file, string):
     else:
         return False
 
+def motif_consensus_to_dict(file):
+    ordered_dict = co.OrderedDict()
+    handle = open(file)
+    seq_records = list(SeqIO.parse(handle, 'fasta'))
+    for seq_record in seq_records:
+        mirna = seq_record.description.split()[0]
+        motif = seq_record.description.split()[1]
+        consensus = str(seq_record.seq)
+        if motif in ordered_dict:
+            raise Exception("\n****************************************\n" +
+                            "DUPLICATE MOTIFS FOUND IN '" + file + "'\n" +
+                            "PLEASE CHECK YOUR MOTIF CONSENSUS FILE FORMAT\n" +
+                            "AND FIX OR DELETE BEFORE RERUNNING PIPELINE\n" +
+                            "****************************************\n")
+        ordered_dict[motif] = [mirna, consensus]
+    return ordered_dict
+
     # def matches(large_string, query_string, threshold):
     #    words = large_string.split()
     #    for word in words:
@@ -129,14 +145,7 @@ rule analyze_isomir:
             out.write(TIMESTAMP + '\n')
 
         # SECTION | SETUP MIRNA INFO DICT #####################################
-        dict_mirna = co.OrderedDict()
-        handle = open(input.motif_consensus)
-        seq_records = list(SeqIO.parse(handle, 'fasta'))
-        for seq_record in seq_records:
-            mirna = seq_record.description.split()[0]
-            motif = seq_record.description.split()[1]
-            consensus = str(seq_record.seq)
-            dict_mirna[motif] = [mirna, consensus]
+        dict_mirna = motif_consensus_to_dict(input.motif_consensus)
 
         # SECTION | MIRNA LOOP ################################################
         for motif, value in dict_mirna.items():
@@ -153,11 +162,6 @@ rule analyze_isomir:
                 pulled_lines = []
                 for line in sample:
                     reads = line.rpartition(' ')[0]
-#                    if config['fuzzy_motif']:  # if fuzzy motif matching
-#                        if len(list(matches(motif, line, 0.8))) > 0:
-#                            motif_con = list(matches(motif, line, 0.8))[0]
-#                            total_reads += int(reads)
-#                            total_sequences += 1
                     if motif in line:
                         pulled_lines.append(line)
                         total_reads += int(reads)
@@ -343,7 +347,7 @@ rule summarize_fastq:
         'results/text/{A}.mirna.txt'
     shell:
         """
-        total_reads=$(cat {input[0]} | echo $((`wc -l`/4)))
+        total_reads=$(($(cat {input[0]} | wc -l) / 4))
         echo "Total miR reads in sample: $total_reads" >> {output}
         grep ">hsa\|total-reads" {input[1]} | cat >> {output}
         echo "\n" >> {output}
