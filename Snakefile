@@ -29,7 +29,16 @@ SAMPLES = [os.path.basename(f) for f in glob.glob('data/*.fastq_ready')]
 ###############################################################################
 
 
-def has_substitution(seq_end, consensus_end):
+def has_substitution_3p(len_trim, seq_end, consensus_end):
+    min_len = min(len(seq_end), len(consensus_end))
+    if len_trim > 3:
+        if (seq_end[min_len - len_trim + 1:min_len] ==
+            consensus_end[min_len - len_trim + 1:min_len]):
+            return True
+    return False
+
+
+def has_substitution_5p(seq_end, consensus_end):
     for i in range(0, min(len(seq_end), len(consensus_end))):
         if (seq_end[len(seq_end) - i - 1] !=
             consensus_end[len(consensus_end) - i - 1]):
@@ -203,30 +212,33 @@ rule analyze_isomir:
                     consensus_end_5p = consensus[:consensus_index_5p]
                     seq_end_5p = seq[:seq_index_5p]
 
+                    # calculation of single-statistics
+                    ratio = float(num_reads)
+                    len_read = len(seq)
+                    len_trim = calc_trimming(seq_end_3p,
+                        consensus_end_3p)
+                    len_tail = calc_tailing(
+                        seq_end_3p, consensus_end_3p, len_trim)
+                    seq_tail = get_tailing_seq(seq, len_tail)
+                    len_trim_5p = calc_trimming_5p(
+                        seq_end_5p, consensus_end_5p)
+                    vari_5p = max(len_trim_5p,
+                        calc_tailing(
+                            seq_end_5p, consensus_end_5p, len_trim_5p))
+
                     # option for not counting same sequence multiple times
                     if (config['destructive_motif_pull'] and
                        len(has_other) > 0 and  # seq maps to multiple miR
                        find_in_file(output[0], seq)):  # check prev
                            logging.warning(
                            'Skipped ' + seq + ' ' + mirna)
-                    elif has_substitution(seq_end_5p, consensus_end_5p):
+                    elif has_substitution_5p(seq_end_5p, consensus_end_5p):
                         logging.warning(
                         'Skipped (5p substitution)' + seq + ' ' + mirna)
+                    elif has_substitution_3p(len_trim, seq_end, consensus_end):
+                        logging.warning(
+                        'Skipped (3p sequencing error)' + seq + ' ' + mirna)
                     else:
-                        # calculation of single-statistics
-                        ratio = float(num_reads)
-                        len_read = len(seq)
-                        len_trim = calc_trimming(seq_end_3p,
-                            consensus_end_3p)
-                        len_tail = calc_tailing(
-                            seq_end_3p, consensus_end_3p, len_trim)
-                        seq_tail = get_tailing_seq(seq, len_tail)
-                        len_trim_5p = calc_trimming_5p(
-                            seq_end_5p, consensus_end_5p)
-                        vari_5p = max(len_trim_5p,
-                            calc_tailing(
-                                seq_end_5p, consensus_end_5p, len_trim_5p))
-
                         # calculation of nt frequencies at each position
                         nt_offset = seq_index_5p - consensus_index_5p
                         for index, nt in enumerate(seq):

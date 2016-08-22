@@ -67,7 +67,34 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 ## Update
 Run the commands ```git reset --hard``` and ```git pull```.
 
+## Additional information
+Quagmir skips any reads that it considers not to be an isomir of the miRNA, even
+if the reads are pulled in by the motif of the miRNA. These skipped reads are
+reported in the run log in the logs/ folder.
+
+Currently, Quagmir by default skips reads that:
+(1) Have none-templating trimming and tailing combinations on the 5' end
+**Biologically, 5' modifications are very rare/non-existent. This removes reads
+that supposedly have these modifications. Keeps isomirs that are a result of
+imprecise cleavage. False positive: Also keeps potentially 'fake' isomirs that
+have non-templating modifications beyond the extent of the provided consensus
+mirna.**
+(2) Have a mutation 3nt from the consensus end (shares rest of end)
+**Most likely to be sequencing errors rather than trimming/tailing if 3nt or
+more are tailed that match the canonical sequence (1/4^3 = 1.5%).
+
+Quagmir also has an optional flag (off by default) to skip reads that:
+(3) Were reported to be an isomir of a previously reported miRNA
+**Biologically, a read can only belong to one miRNA**
+
 ## Notes
 The step of collapsing sample files takes the longest time, but once the samples are collapsed, and you need to re-run the pipeline, the pipeline will automatically start from the collapsed files and take a far shorter amount of time
 
 Output will be a **sample.fastq_ready.results.txt** file for each sample in the **results/** folder
+
+## Future features
+- Have a provided primary miRNA transcript for each miRNA either in
+motif-consensus as well as gen-uniq-subseq, or have it pre-provided in local
+files. Then implement features to smartly filter out reads that are not
+isomiRs of a miRNA because they have statistically improbable behavior (e.g
+5p non-templating addition) or sequencing errors.
