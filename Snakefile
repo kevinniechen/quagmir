@@ -106,6 +106,7 @@ def motif_consensus_to_dict(file):
         if motif in ordered_dict:
             raise Exception("\n************************************\n" +
                 "DUPLICATE MOTIFS FOUND IN '" + file + "'\n" +
+                "FIRST INSTANCE: " + motif + "\n" +
                 "PLEASE CHECK YOUR MOTIF CONSENSUS FILE\n" +
                 "AND FIX OR DELETE BEFORE RERUNNING\n" +
                 "************************************\n")
@@ -253,7 +254,7 @@ rule analyze_isomir:
                                 vari_5p, has_other])
 
     # SECTION | MOVE STATISTICS INTO DATAFRAME ############################
-                if len(table_out):
+                if len(table_out) > 0:
                     df = pd.DataFrame(table_out,
                                   columns=["SEQUENCE",
                                            "LEN_READ",
@@ -264,14 +265,14 @@ rule analyze_isomir:
                                            "SEQ_TAIL",
                                            "VAR_5P",
                                            "MATCH"])
-                df.sort_values(by="READS", ascending=0, inplace=1)
+                    df.sort_values(by="READS", ascending=0, inplace=1)
 
-                df2 = pd.DataFrame(freq_nt).fillna(value=0)
-                df2['READS'] = df2.sum(axis=1)
-                df2.loc[:, "A":"T"] = df2.loc[
-                    :, "A":"T"].div(df2["READS"], axis=0)
-                df2 = np.round(df2, decimals=4)
-                df2.index.name = 'NT_POSITION'
+                    df2 = pd.DataFrame(freq_nt).fillna(value=0)
+                    df2['READS'] = df2.sum(axis=1)
+                    df2.loc[:, "A":"T"] = df2.loc[
+                        :, "A":"T"].div(df2["READS"], axis=0)
+                    df2 = np.round(df2, decimals=4)
+                    df2.index.name = 'NT_POSITION'
 
     # SECTION | GENERATE SUMMARY STATISTICS ###############################
                 # calculate total reads
