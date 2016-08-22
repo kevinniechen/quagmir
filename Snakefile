@@ -234,10 +234,12 @@ rule analyze_isomir:
                            'Skipped ' + seq + ' ' + mirna)
                     elif has_substitution_5p(seq_end_5p, consensus_end_5p):
                         logging.warning(
-                        'Skipped (5p substitution)' + seq + ' ' + mirna)
-                    elif has_substitution_3p(len_trim, seq_end, consensus_end):
+                        'Skipped (5p substitution) ' + seq + ' ' + mirna)
+                    elif has_substitution_3p(len_trim, seq_end_3p,
+                        consensus_end_3p):
                         logging.warning(
-                        'Skipped (3p sequencing error)' + seq + ' ' + mirna)
+                        'Skipped (3p sequencing error) ' + seq + ' ' +
+                            str(len_trim) + ' ' + mirna)
                     else:
                         # calculation of nt frequencies at each position
                         nt_offset = seq_index_5p - consensus_index_5p
