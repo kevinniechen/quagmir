@@ -246,28 +246,40 @@ rule analyze_isomir:
                         nt_offset = seq_index_5p - consensus_index_5p
                         for index, nt in enumerate(seq):
                             freq_nt[nt][index - nt_offset] += num_reads
-                        # if sequence has minimum reads, add to display queue
-                        if (ratio > config['min_ratio'] or
-                            num_reads > config['min_read']):
-                            table_out.append([seq, len_read, num_reads,
+                        # add to display queue
+                        table_out.append([seq, len_read, num_reads,
                                 ratio, len_trim, len_tail, seq_tail,
                                 vari_5p, has_other])
 
     # SECTION | MOVE STATISTICS INTO DATAFRAME ############################
+                df = pd.DataFrame(table_out,
+                              columns=["SEQUENCE",
+                                       "LEN_READ",
+                                       "READS",
+                                       "RATIO",
+                                       "LEN_TRIM",
+                                       "LEN_TAIL",
+                                       "SEQ_TAIL",
+                                       "VAR_5P",
+                                       "MATCH"])
                 if len(table_out) > 0:
-                    df = pd.DataFrame(table_out,
-                                  columns=["SEQUENCE",
-                                           "LEN_READ",
-                                           "READS",
-                                           "RATIO",
-                                           "LEN_TRIM",
-                                           "LEN_TAIL",
-                                           "SEQ_TAIL",
-                                           "VAR_5P",
-                                           "MATCH"])
                     df.sort_values(by="READS", ascending=0, inplace=1)
 
-                    df2 = pd.DataFrame(freq_nt).fillna(value=0)
+                # calculate total reads
+                total_reads = float(df['READS'].sum())
+                if total_reads == 0:
+                    raise Exception("\n************************************\n" +
+                        "NO MATCHED READS FOUND IN '" + input.collapsed_fasta + "'\n" +
+                        "FIRST INSTANCE: " + mirna + "\n" +
+                        "PLEASE CHECK YOUR FASTQ_READY FILE\n" +
+                        "AND FIX OR DELETE BEFORE RERUNNING\n" +
+                        "************************************\n")
+
+                # calculate ratio
+                df['RATIO'] = df['READS'].apply(lambda x: round(100*x/total_reads, 2))
+
+                df2 = pd.DataFrame(freq_nt).fillna(value=0)
+                if len(table_out) > 0:
                     df2['READS'] = df2.sum(axis=1)
                     df2.loc[:, "A":"T"] = df2.loc[
                         :, "A":"T"].div(df2["READS"], axis=0)
@@ -275,21 +287,9 @@ rule analyze_isomir:
                     df2.index.name = 'NT_POSITION'
 
     # SECTION | GENERATE SUMMARY STATISTICS ###############################
-                # calculate total reads
-                total_reads = float(df['READS'].sum())
-                if total_reads == 0:
-                    raise Exception("\n************************************\n" +
-                        "NO MATCHED READS FOUND IN '" + input.collapsed_fasta + "'\n" +
-                        "PLEASE CHECK YOUR FASTQ_READY FILE\n" +
-                        "AND FIX OR DELETE BEFORE RERUNNING\n" +
-                        "************************************\n")
-
-                # calculate ratio
-                df['RATIO'] = df['READS'].apply(lambda x: str(round(100*x/total_reads, 2))+'%')
-
-                # calculate number of isomirs (visible)
+                # calculate number of isomirs above threshold
                 total_isomirs = df.shape[0]
-                if df['LEN_TRIM'].iloc[0] == 0 and df['LEN_TAIL'].iloc[0] == 0:
+                if (df['LEN_TRIM'].iloc[0] == 0 and df['LEN_TAIL'].iloc[0] == 0):
                     total_isomirs -= 1
 
                 # calculate 5' fidelity score
@@ -334,6 +334,12 @@ rule analyze_isomir:
                         ratio_seq_tail_only += read_ratio
                     if len_trim > 0 and len_tail > 0:
                         ratio_seq_trim_and_tail += read_ratio
+
+    # SECTION | FILTER OUT DISPLAYED READS AND ADD % SIGN
+                # only show reads above threshold
+                df = df[(df.RATIO > config['min_ratio']) |
+                    (df.READS > config['min_read'])]
+                df['RATIO'] = df['RATIO'].apply(lambda x: str(x) + '%')
 
     # SECTION | DISPLAY HEADER AND SUMMARY STATISTICS #################
                 with open(output[0], 'a') as out:
