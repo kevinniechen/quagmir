@@ -287,11 +287,6 @@ rule analyze_isomir:
                     df2.index.name = 'NT_POSITION'
 
     # SECTION | GENERATE SUMMARY STATISTICS ###############################
-                # calculate number of isomirs above threshold
-                total_isomirs = df.shape[0]
-                if (df['LEN_TRIM'].iloc[0] == 0 and df['LEN_TAIL'].iloc[0] == 0):
-                    total_isomirs -= 1
-
                 # calculate 5' fidelity score
                 vals_vari_5p = df['VAR_5P'].tolist()
                 vals_reads = df['READS'].tolist()
@@ -340,6 +335,11 @@ rule analyze_isomir:
                 df = df[(df.RATIO > config['min_ratio']) |
                     (df.READS > config['min_read'])]
                 df['RATIO'] = df['RATIO'].apply(lambda x: str(x) + '%')
+
+                # calculate number of isomirs above threshold
+                total_isomirs = df.shape[0]
+                if (df['LEN_TRIM'].iloc[0] == 0 and df['LEN_TAIL'].iloc[0] == 0):
+                    total_isomirs -= 1
 
     # SECTION | DISPLAY HEADER AND SUMMARY STATISTICS #################
                 with open(output[0], 'a') as out:
