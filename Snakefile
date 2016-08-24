@@ -32,8 +32,8 @@ SAMPLES = [os.path.basename(f) for f in glob.glob('data/*.fastq_ready')]
 def has_substitution_3p(len_trim, seq_end, consensus_end):
     min_len = min(len(seq_end), len(consensus_end))
     if len_trim > 3:
-        if (seq_end[min_len - len_trim + 1:min_len] ==
-            consensus_end[min_len - len_trim + 1:min_len]):
+        if (seq_end[len(seq_end)-len_trim+1:min_len] ==
+            consensus_end[len(seq_end)-len_trim+1:min_len]:
             return True
     return False
 
