@@ -1,0 +1,5 @@
+*.DS_Store
+logs/
+.snakemake/
+results/
+data/collapsed

@@ -268,6 +268,8 @@ rule analyze_isomir:
                 # calculate total reads
                 total_reads = float(df['READS'].sum())
                 if total_reads == 0:
+                    logging.info("Mirna " + mirna + " skipped: no supporting/matched reads")
+                    continue
                     raise Exception("\n************************************\n" +
                         "NO MATCHED READS FOUND IN '" + input.collapsed_fasta + "'\n" +
                         "FIRST INSTANCE: " + mirna + "\n" +
