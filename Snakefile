@@ -104,6 +104,8 @@ def motif_consensus_to_dict(file):
         motif = seq_record.description.split()[1]
         consensus = str(seq_record.seq)
         if motif in ordered_dict:
+            logging.info('Motif ' + motif + ' encountered more than once in ' + file + ': only first occurrence is kept')
+            continue
             raise Exception("\n************************************\n" +
                 "DUPLICATE MOTIFS FOUND IN '" + file + "'\n" +
                 "FIRST INSTANCE: " + motif + "\n" +
