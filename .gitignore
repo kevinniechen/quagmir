@@ -3,3 +3,4 @@ logs/
 .snakemake/
 results/
 data/collapsed
+data/realcase*

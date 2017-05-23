@@ -18,6 +18,7 @@ import time
 import logging
 from os.path import join
 from os.path import splitext
+from itertools import takewhile
 from decimal import *
 from Bio import SeqIO
 
@@ -104,6 +105,7 @@ def motif_consensus_to_dict(file):
         motif = seq_record.description.split()[1]
         consensus = str(seq_record.seq)
         if motif in ordered_dict:
+            #continue
             raise Exception("\n************************************\n" +
                 "DUPLICATE MOTIFS FOUND IN '" + file + "'\n" +
                 "FIRST INSTANCE: " + motif + "\n" +
@@ -125,16 +127,20 @@ def other_motifs_pulled_seq(dict_mirna_consensus, line, motif):
     return annotation
 
 
-    # def matches(large_string, query_string, threshold):
-    #    words = large_string.split()
-    #    for word in words:
-    #        s = difflib.SequenceMatcher(None, word, query_string)
-    #        match = ''.join(word[i:i + n]
-    #                        for i, j, n in s.get_matching_blocks() if n)
-    #      if len(match) / float(len(query_string)) >= threshold:
-    #            yield match
+def chunkify_file(infilepath, delim=">"):
+    with open(infilepath) as infile:
+        answer = []
+        tinfile = iter(infile)
+        while 1:
+            try:
+                chunk = [next(tinfile)]
+                chunk.extend(takewhile(lambda line: not line.startswith(">"), tinfile))
+                answer.append(chunk)
+            except StopIteration:
+                break
+    return answer
 
-    ###################################################################
+
 
 configfile:
     'config.yaml'
@@ -142,7 +148,8 @@ configfile:
 rule all:
     input:
         expand('results/tabular/{A}.isomir.tsv', A=SAMPLES),
-        expand('results/text/{A}.mirna.txt', A=SAMPLES)
+        expand('results/text/{A}.mirna.txt', A=SAMPLES),
+        expand('results/tabular/{A}.isomir.expression.tsv', A=SAMPLES)
 
 rule collapse_fastq:
     input:
@@ -157,7 +164,8 @@ rule analyze_isomir:
         motif_consensus = config['motif_consensus_file'],
         collapsed_fasta = 'data/collapsed/{A}.collapsed'
     output:
-        'results/tabular/{A}.isomir.tsv'
+        'results/tabular/{A}.isomir.tsv',
+        'results/tabular/{A}.isomir.counts.tsv'
     log:
         os.path.join("logs/", TIMESTAMP)
     run:
@@ -176,6 +184,13 @@ rule analyze_isomir:
 
         # SECTION | SETUP MIRNA CONSENSUS DICT #####################################
         dict_mirna_consensus = motif_consensus_to_dict(input.motif_consensus)
+
+        # with open(str(input.motif_txt), 'rt') as txt:
+        #     total_reads_in_sample = txt.readline().split(": ")[1]
+        #     total_mapped_reads = 0
+        #     for ln in txt:
+        #         if ln.startswith("total-reads"):
+        #             total_mapped_reads += int(ln.split("\t")[1])
 
         # SECTION | MIRNA LOOP ################################################
         for motif, value in dict_mirna_consensus.items():
@@ -262,6 +277,7 @@ rule analyze_isomir:
                                        "SEQ_TAIL",
                                        "VAR_5P",
                                        "MATCH"])
+
                 if len(table_out) > 0:
                     df.sort_values(by="READS", ascending=0, inplace=1)
 
@@ -386,6 +402,14 @@ rule analyze_isomir:
                         df2.to_csv(out, sep='\t')
                         out.write('\n')
 
+    # NORMALIZE COUNTS
+                df3 = df.copy()
+                df3.drop(["RATIO", "LEN_TRIM", "LEN_TAIL", "SEQ_TAIL", "VAR_5P", "MATCH"], inplace=True, axis=1)
+                df3.insert(0, 'MIRNA', mirna) 
+
+                with open(output[1], 'a') as out:
+                    df3.to_csv(out, sep='\t', index=False, header=False)
+
 rule summarize_fastq:
     input:
         'data/{A}',
@@ -399,3 +423,34 @@ rule summarize_fastq:
         grep ">hsa\|total-reads" {input[1]} | cat >> {output}
         echo "\n" >> {output}
         """
+
+rule cpm_normalize_motifs:
+    input:
+        'results/tabular/{A}.isomir.counts.tsv',
+        'results/text/{A}.mirna.txt'
+    output:
+        'results/tabular/{A}.isomir.expression.tsv'
+    run:
+        df = pd.read_csv(input[0], delimiter="\t", header=None, names = ["MIRNA", "ISOMIR", "LEN", "COUNT"])
+
+        with open(str(input[1]), "rt") as txt:
+            total_reads = int(txt.readline().split(": ")[1])
+
+        df['LEN_NORM'] = df['COUNT'] / df['LEN']
+        df['CPM'] = df['COUNT'] / df['COUNT'].sum() * float(10^6) # TPM is also len-norm
+        df['RPKM'] = df['LEN_NORM'] / total_reads * float(10^9)
+        df.drop(['LEN_NORM'], inplace=True, axis=1)
+
+        with open(output[0], 'a') as out:
+            df.to_csv(out, sep='\t', index=False, header=False)
+
+
+
+
+
+
+
+
+
+
+
