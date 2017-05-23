@@ -32,8 +32,11 @@ SAMPLES = [os.path.basename(f) for f in glob.glob('data/*.fastq_ready')]
 def has_substitution_3p(len_trim, seq_end, consensus_end):
     min_len = min(len(seq_end), len(consensus_end))
     if len_trim > 3:
-        if (seq_end[len(seq_end)-len_trim+2:min_len] ==
-            consensus_end[len(seq_end)-len_trim+1:min_len]):
+        #if (seq_end[len(seq_end)-len_trim+2:min_len] ==
+        #    consensus_end[len(seq_end)-len_trim+1:min_len]):
+        #if all(seq_end[i] == consensus_end[i] or consensus_end[i] == 'N' for i in range(len(seq_end)-len_trim+2, min_len)):
+        #    return True
+        if False:    
             return True
     return False
 
@@ -41,13 +44,13 @@ def has_substitution_3p(len_trim, seq_end, consensus_end):
 def has_substitution_5p(seq_end, consensus_end):
     for i in range(0, min(len(seq_end), len(consensus_end))):
         if (seq_end[len(seq_end) - i - 1] !=
-            consensus_end[len(consensus_end) - i - 1]):
+            consensus_end[len(consensus_end) - i - 1]) and consensus_end[len(consensus_end) - i - 1] != 'N':
             return True
     return False
 
 def calc_trimming(seq_end, consensus_end):
     for i in range(0, min(len(seq_end), len(consensus_end))):
-        if seq_end[i] != consensus_end[i]:
+        if seq_end[i] != consensus_end[i] and consensus_end[i] != 'N':
             return (len(consensus_end) - i)
     if len(seq_end) < len(consensus_end):
         return len(consensus_end) - len(seq_end)
@@ -57,7 +60,8 @@ def calc_trimming(seq_end, consensus_end):
 def calc_trimming_5p(seq_end, consensus_end):
     for i in range(0, min(len(seq_end), len(consensus_end))):
         if seq_end[len(seq_end) - i - 1] != consensus_end[len(
-                consensus_end) - i - 1]:
+                consensus_end) - i - 1] and consensus_end[len(
+                consensus_end) - i - 1] != 'N':
             return (len(consensus_end) - i)
     if len(seq_end) < len(consensus_end):
         return len(consensus_end) - len(seq_end)
@@ -120,12 +124,45 @@ def other_motifs_pulled_seq(dict_mirna_consensus, line, motif):
     annotation = ""
     list_motifs = list(dict_mirna_consensus.keys())
     matching_motifs = [
-        x for x in list_motifs if x in line if x != motif]
+        x for x in list_motifs if contains_motif(line, chop_motif(x)) if x != motif]
     for matched_motif in matching_motifs:
         annotation += dict_mirna_consensus[matched_motif][0]
         annotation += " "
     return annotation
 
+def chop_motif(motif):
+    n_pos = str.find(motif, 'N')
+    if n_pos==-1:
+        return([motif])
+    n_num = 0
+    i = n_pos
+    while i<len(motif) and motif[i]=='N':
+        i+=1
+        n_num+=1
+    return([motif[:n_pos], n_num] + chop_motif(motif[n_pos+n_num:]))
+
+def starts_with(line, motif):
+    if len(motif) == 1:
+        return(str.startswith(line, motif[0]))
+    if not str.startswith(line, motif[0]):
+        return(False)
+    return(starts_with(line[len(motif[0])+motif[1]:], motif[2:]))
+
+def find_motif(line, motif):
+    if len(motif) == 1:
+        return(str.find(line, motif[0]))
+    motif_pos = str.find(line, motif[0])
+    if motif_pos == -1 or starts_with(line[motif_pos + len(motif[0]) + motif[1]:], motif[2:]):
+        return(motif_pos)
+    subline_pos = find_motif(line[motif_pos+1:], motif)
+    if subline_pos == -1:
+        return(-1)
+    return([motif_pos + 1 + subline_pos, motif_pos, subline_pos])
+    
+def contains_motif(line, motif):
+    if find_motif(line, motif) == -1:
+        return(False)
+    return(True)
 
     # def matches(large_string, query_string, threshold):
     #    words = large_string.split()
@@ -181,6 +218,7 @@ rule analyze_isomir:
 
         # SECTION | MIRNA LOOP ################################################
         for motif, value in dict_mirna_consensus.items():
+            motif_choped = chop_motif(motif)
             mirna = value[0]
             consensus = value[1]
             table_out = []
@@ -193,7 +231,7 @@ rule analyze_isomir:
                 pulled_lines = []
                 for line in sample:
                     reads = line.rpartition(' ')[0]
-                    if motif in line:
+                    if contains_motif(line, motif_choped):
                         pulled_lines.append(line)
 
                 for line in pulled_lines:
@@ -205,13 +243,13 @@ rule analyze_isomir:
                         dict_mirna_consensus, line, motif)
 
                     # sequence manipulations
-                    consensus_index_3p = str.find(
-                        consensus, motif) + len(motif)
-                    seq_index_3p = str.find(seq, motif) + len(motif)
+                    consensus_index_3p = find_motif(
+                        consensus, motif_choped) + len(motif)
+                    seq_index_3p = find_motif(seq, motif_choped) + len(motif)
                     consensus_end_3p = consensus[consensus_index_3p:]
                     seq_end_3p = seq[seq_index_3p:]
-                    consensus_index_5p = str.find(consensus, motif)
-                    seq_index_5p = str.find(seq, motif)
+                    consensus_index_5p = find_motif(consensus, motif_choped)
+                    seq_index_5p = find_motif(seq, motif_choped)
                     consensus_end_5p = consensus[:consensus_index_5p]
                     seq_end_5p = seq[:seq_index_5p]
 
