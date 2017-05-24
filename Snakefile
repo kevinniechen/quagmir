@@ -145,7 +145,7 @@ def chop_motif(motif):
 def starts_with(line, motif):
     if len(motif) == 1:
         return(str.startswith(line, motif[0]))
-    if not str.startswith(line, motif[0]):
+    if not str.startswith(line, motif[0]) or len(motif[0])+motif[1] > len(line):
         return(False)
     return(starts_with(line[len(motif[0])+motif[1]:], motif[2:]))
 
@@ -153,12 +153,14 @@ def find_motif(line, motif):
     if len(motif) == 1:
         return(str.find(line, motif[0]))
     motif_pos = str.find(line, motif[0])
-    if motif_pos == -1 or starts_with(line[motif_pos + len(motif[0]) + motif[1]:], motif[2:]):
+    if motif_pos == -1 or motif_pos + len(motif[0]) + motif[1] > len(line):
+        return(-1)
+    if starts_with(line[motif_pos + len(motif[0]) + motif[1]:], motif[2:]):
         return(motif_pos)
     subline_pos = find_motif(line[motif_pos+1:], motif)
     if subline_pos == -1:
         return(-1)
-    return([motif_pos + 1 + subline_pos, motif_pos, subline_pos])
+    return(motif_pos + 1 + subline_pos)
     
 def contains_motif(line, motif):
     if find_motif(line, motif) == -1:
