@@ -478,6 +478,7 @@ rule cpm_normalize_motifs:
         df['LEN_NORM'] = df['COUNT'] / df['LEN']
         df['CPM'] = df['COUNT'] / df['COUNT'].sum() * float(10^6) # TPM is also len-norm
         df['RPKM'] = df['LEN_NORM'] / total_reads * float(10^9)
+
         df.drop(['LEN_NORM'], inplace=True, axis=1)
 
         with open(output[0], 'a') as out:
