@@ -25,7 +25,7 @@ from Bio import SeqIO
 ###############################################################################
 
 TIMESTAMP = time.strftime('%d-%b-%Y@%I:%M:%S%p')
-SAMPLES = [os.path.basename(f) for f in glob.glob('data/*.fastq_ready')]
+SAMPLES = [os.path.basename(f) for f in glob.glob('data/*')]
 
 ###############################################################################
 
