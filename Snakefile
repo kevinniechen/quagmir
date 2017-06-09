@@ -189,23 +189,25 @@ rule all:
     input:
         expand('results/tabular/{A}.isomir.tsv', A=SAMPLES),
         expand('results/text/{A}.mirna.txt', A=SAMPLES),
+        expand('results/tabular/{A}.isomir.sequence_info.tsv', A=SAMPLES),
         expand('results/tabular/{A}.isomir.expression.tsv', A=SAMPLES)
 
 rule collapse_fastq:
     input:
         'data/{A}'
     output:
-        'data/collapsed/{A}.collapsed'
+        'collapsed/{A}.collapsed'
     shell:
         'awk "NR%4==2" {input} | sort -S1900G | uniq -c > {output}'
 
 rule analyze_isomir:
     input:
         motif_consensus = config['motif_consensus_file'],
-        collapsed_fasta = 'data/collapsed/{A}.collapsed'
+        collapsed_fasta = 'collapsed/{A}.collapsed'
     output:
         'results/tabular/{A}.isomir.tsv',
-        'results/tabular/{A}.isomir.counts.tsv'
+        'results/tabular/{A}.isomir.sequence_info.tsv',
+        'results/tabular/{A}.isomir.nucleotide_dist.tsv'
     log:
         os.path.join("logs/", TIMESTAMP)
     run:
@@ -233,6 +235,8 @@ rule analyze_isomir:
         #             total_mapped_reads += int(ln.split("\t")[1])
 
         # SECTION | MIRNA LOOP ################################################
+        first_dsi = True
+        first_dnd = True
         for motif, value in dict_mirna_consensus.items():
             motif_choped = chop_motif(motif)
             mirna = value[0]
@@ -302,14 +306,18 @@ rule analyze_isomir:
                         nt_offset = seq_index_5p - consensus_index_5p
                         for index, nt in enumerate(seq):
                             freq_nt[nt][index - nt_offset] += num_reads
+                            for nt2 in ['A', 'C', 'G', 'T']:
+                                if nt2!=nt and (freq_nt[nt]==None or freq_nt[nt2][index - nt_offset] == None):
+                                    freq_nt[nt2][index - nt_offset] = 0
                         # add to display queue
-                        table_out.append([seq, len_read, num_reads,
+                        table_out.append([mirna, seq, len_read, num_reads,
                                 ratio, len_trim, len_tail, seq_tail,
                                 vari_5p, has_other])
 
     # SECTION | MOVE STATISTICS INTO DATAFRAME ############################
                 df = pd.DataFrame(table_out,
-                              columns=["SEQUENCE",
+                              columns=["MIRNA",
+                                       "SEQUENCE",
                                        "LEN_READ",
                                        "READS",
                                        "RATIO",
@@ -327,23 +335,19 @@ rule analyze_isomir:
                 if total_reads == 0:
                     logging.info("Mirna " + mirna + " skipped: no supporting/matched reads")
                     continue
-                    raise Exception("\n************************************\n" +
-                        "NO MATCHED READS FOUND IN '" + input.collapsed_fasta + "'\n" +
-                        "FIRST INSTANCE: " + mirna + "\n" +
-                        "PLEASE CHECK YOUR FASTQ_READY FILE\n" +
-                        "AND FIX OR DELETE BEFORE RERUNNING\n" +
-                        "************************************\n")
 
                 # calculate ratio
                 df['RATIO'] = df['READS'].apply(lambda x: round(100*x/total_reads, 2))
-
-                df2 = pd.DataFrame(freq_nt).fillna(value=0)
+                df2 = pd.DataFrame(freq_nt)
+                df2['MIRNA'] = mirna
                 if len(table_out) > 0:
                     df2['READS'] = df2.sum(axis=1)
                     df2.loc[:, "A":"T"] = df2.loc[
                         :, "A":"T"].div(df2["READS"], axis=0)
                     df2 = np.round(df2, decimals=4)
                     df2.index.name = 'NT_POSITION'
+                df2.set_index('MIRNA', append=True, inplace=True)
+                df2 = df2.swaplevel(0, 1)
 
     # SECTION | GENERATE SUMMARY STATISTICS ###############################
                 # calculate 5' fidelity score
@@ -401,8 +405,8 @@ rule analyze_isomir:
                     total_isomirs -= 1
 
     # SECTION | DISPLAY HEADER AND SUMMARY STATISTICS #################
-                with open(output[0], 'a') as out:
-                    if config['display_summary']:
+                if config['display_summary']:
+                    with open(output[0], 'a') as out:
                         out.write('==========================\n' +
                                   '>' + mirna + '\n')
                         out.write('motif:\t' + motif + '\n')
@@ -434,22 +438,24 @@ rule analyze_isomir:
                         out.write('\n')
 
     # SECTION | DISPLAY SEQUENCES AND SINGLE STATISTICS ###############
-                    if config['display_sequence_info']:
-                        out.write('[sequence-information]\n')
-                        df.to_csv(out, sep='\t', index=False)
-                        out.write('\n')
-                    if config['display_nucleotide_dist']:
-                        out.write('[nucleotide-distribution]\n')
-                        df2.to_csv(out, sep='\t')
-                        out.write('\n')
-
-    # NORMALIZE COUNTS
-                df3 = df.copy()
-                df3.drop(["RATIO", "LEN_TRIM", "LEN_TAIL", "SEQ_TAIL", "VAR_5P", "MATCH"], inplace=True, axis=1)
-                df3.insert(0, 'MIRNA', mirna) 
-
-                with open(output[1], 'a') as out:
-                    df3.to_csv(out, sep='\t', index=False, header=False)
+                if config['display_sequence_info']:
+                    with open(output[1], 'a') as out:
+                        if first_dsi:
+                            df.to_csv(out, sep='\t', index = False)
+                            first_dsi = False
+                        else:
+                            df.to_csv(out, sep='\t', index=False, header = False)
+                else:
+                    open(output[1], 'a').close()
+                if config['display_nucleotide_dist']:
+                    with open(output[2], 'a') as out:
+                        if first_dnd:
+                            df2.to_csv(out, sep='\t')
+                            first_dnd = False
+                        else:
+                            df2.to_csv(out, sep='\t', header = False)
+                else:
+                    open(output[2], 'a').close()
 
 rule summarize_fastq:
     input:
@@ -467,32 +473,21 @@ rule summarize_fastq:
 
 rule cpm_normalize_motifs:
     input:
-        'results/tabular/{A}.isomir.counts.tsv',
+        'results/tabular/{A}.isomir.sequence_info.tsv',
         'results/text/{A}.mirna.txt'
     output:
         'results/tabular/{A}.isomir.expression.tsv'
     run:
-        df = pd.read_csv(input[0], delimiter="\t", header=None, names = ["MIRNA", "ISOMIR", "LEN", "COUNT"])
-
-        with open(str(input[1]), "rt") as txt:
-            total_reads = int(txt.readline().split(": ")[1])
-
-        df['LEN_NORM'] = df['COUNT'] / df['LEN']
-        df['CPM'] = df['COUNT'] / df['COUNT'].sum() * float(10^6) # TPM is also len-norm
-        df['RPKM'] = df['LEN_NORM'] / total_reads * float(10^9)
-
-        df.drop(['LEN_NORM'], inplace=True, axis=1)
-
-        with open(output[0], 'a') as out:
-            df.to_csv(out, sep='\t', index=False, header=False)
-
-
-
-
-
-
-
-
-
-
-
+        first_exp = True
+        if config['display_sequence_info'] and config['display_summary']:
+            df = pd.read_csv(input[0], delimiter="\t", header = 0)
+            with open(str(input[1]), "rt") as txt:
+                total_reads = int(txt.readline().split(": ")[1])
+            df['LEN_NORM'] = df['READS'] / df['LEN_READ'] * float(10^9)
+            df['CPM'] = df['READS'] / df['READS'].sum() * float(10^6) # TPM is also len-norm
+            df['RPKM'] = df['LEN_NORM'] / total_reads * float(10^9)
+            df.drop(['LEN_NORM'], inplace=True, axis=1)
+            with open(output[0], 'a') as out:
+                df.to_csv(out, sep='\t', index=False, header=True)
+        else:
+            open(output[0], 'a').close()
