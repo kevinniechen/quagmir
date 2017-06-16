@@ -340,6 +340,10 @@ rule analyze_isomir:
                 df['RATIO'] = df['READS'].apply(lambda x: round(100*x/total_reads, 2))
                 df2 = pd.DataFrame(freq_nt)
                 df2['MIRNA'] = mirna
+                if "N" not in df2:
+                    df2["N"] = 0.0
+                else:
+                    df2["N"]=df2["N"].fillna(0.0)
                 if len(table_out) > 0:
                     df2['READS'] = df2.sum(axis=1)
                     df2.loc[:, "A":"T"] = df2.loc[
@@ -348,6 +352,7 @@ rule analyze_isomir:
                     df2.index.name = 'NT_POSITION'
                 df2.set_index('MIRNA', append=True, inplace=True)
                 df2 = df2.swaplevel(0, 1)
+                df2 = df2[["A", "C", "G", "T", "N", "READS"]]
 
     # SECTION | GENERATE SUMMARY STATISTICS ###############################
                 # calculate 5' fidelity score
@@ -360,7 +365,7 @@ rule analyze_isomir:
 
                 # calculate individual nt tailing ratios
                 vals_tail_seq = df['SEQ_TAIL'].tolist()
-                array_nt = [0, 0, 0, 0]  # A T C G
+                array_nt = [0, 0, 0, 0]  # A C G T
                 for seq_tail, read in zip(vals_tail_seq, vals_reads):
                     count_nt = co.Counter(seq_tail)
                     array_nt[0] += (count_nt['A'] * read)
@@ -483,10 +488,8 @@ rule cpm_normalize_motifs:
             df = pd.read_csv(input[0], delimiter="\t", header = 0)
             with open(str(input[1]), "rt") as txt:
                 total_reads = int(txt.readline().split(": ")[1])
-            df['LEN_NORM'] = df['READS'] / df['LEN_READ'] * float(10^9)
             df['CPM'] = df['READS'] / df['READS'].sum() * float(10^6) # TPM is also len-norm
-            df['RPKM'] = df['LEN_NORM'] / total_reads * float(10^9)
-            df.drop(['LEN_NORM'], inplace=True, axis=1)
+            df['RPKM'] = df['READS'] / df['LEN_READ'] / total_reads * float(10^9)
             with open(output[0], 'a') as out:
                 df.to_csv(out, sep='\t', index=False, header=True)
         else:
