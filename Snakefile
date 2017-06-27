@@ -32,15 +32,9 @@ SAMPLES = [os.path.basename(f) for f in glob.glob('data/*')]
 
 def has_substitution_3p(len_trim, seq_end, consensus_end):
     min_len = min(len(seq_end), len(consensus_end))
-    if len_trim > 3:
-        #if (seq_end[len(seq_end)-len_trim+2:min_len] ==
-        #    consensus_end[len(seq_end)-len_trim+1:min_len]):
-        #if all(seq_end[i] == consensus_end[i] or consensus_end[i] == 'N' for i in range(len(seq_end)-len_trim+2, min_len)):
-        #    return True
-        if False:    
-            return True
+    if len_trim > 3 and all(seq_end[i] == consensus_end[i] or consensus_end[i] == 'N' for i in range(len(seq_end)-len_trim+2, min_len)):
+        return True
     return False
-
 
 def has_substitution_5p(seq_end, consensus_end):
     for i in range(0, min(len(seq_end), len(consensus_end))):
