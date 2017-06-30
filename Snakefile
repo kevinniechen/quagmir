@@ -206,8 +206,6 @@ rule analyze_isomir:
                 logging.info(str(key) + ':\t' + str(val))
             config_logged = True
         logging.debug("Start sample: " + input.collapsed_fasta)
-        with open(output[0], 'a') as out:
-            out.write(TIMESTAMP + '\n')
 
         # SECTION | SETUP MIRNA CONSENSUS DICT #####################################
         dict_mirna_consensus = motif_consensus_to_dict(input.motif_consensus)
