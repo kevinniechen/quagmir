@@ -397,7 +397,7 @@ rule analyze_isomir:
     # SECTION | DISPLAY HEADER AND SUMMARY STATISTICS #################
                 if config['display_summary']:
                     with open(output[0], 'a') as out:
-                        total_reads = sum(1 for line in open(input.input_fasta)/4
+                        total_reads_in_sample = sum(1 for line in open(input.input_fasta)/4
                         summary_out = [[mirna,
                                         motif,
                                         consensus,
@@ -413,7 +413,7 @@ rule analyze_isomir:
                                         str(ratio_seq_tail_only),
                                         str(ratio_seq_tail_only + ratio_seq_trim_and_tail),
                                         str(ratio_seq_trim_and_tail),
-                                        total_reads]]
+                                        str(int(total_reads_in_sample))]]
                         df3 = pd.DataFrame(summary_out,
                                            columns = ["MIRNA",
                                                       "MOTIF",
@@ -430,7 +430,7 @@ rule analyze_isomir:
                                                       "SEQUENCE TAILING ONLY",
                                                       "SEQUENCE TAILING",
                                                       "SEQUENCE TRIMMING AND TAILING",
-                                                      "TOTAL READS"])
+                                                      "TOTAL READS IN SAMPLE"])
                         if first_ds:
                             df3.to_csv(out, sep='\t', index = False)
                             first_ds = False
@@ -468,7 +468,7 @@ rule cpm_normalize_motifs:
         first_exp = True
         if config['display_sequence_info'] and config['display_summary']:
             df = pd.read_csv(input[0], delimiter="\t", header = 0)
-            total_reads = pd.read_csv(input[1], delimiter="\t", header = 0, nrows = 2)['TOTAL READS'].iloc[0]
+            total_reads = pd.read_csv(input[1], delimiter="\t", header = 0, nrows = 2)['TOTAL READS IN SAMPLE'].iloc[0]
             df['CPM'] = df['READS'] / df['READS'].sum() * float(10^6) # TPM is also len-norm
             df['RPKM'] = df['READS'] / df['LEN_READ'] / total_reads * float(10^9)
             with open(output[0], 'a') as out:
