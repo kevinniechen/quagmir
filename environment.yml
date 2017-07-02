@@ -41,7 +41,7 @@ dependencies:
 - python=3.5.1=0
 - pytz=2016.4=py35_0
 - pyyaml=3.11=py35_4
-- r::zlib=1.2.8=1
+- r::zlib=1.2.8
 - readline=6.2=2
 - requests=2.10.0=py35_0
 - setuptools=23.0.0=py35_0
