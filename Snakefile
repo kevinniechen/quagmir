@@ -189,7 +189,7 @@ rule analyze_isomir:
     input:
         motif_consensus = config['motif_consensus_file'],
         collapsed_fasta = 'collapsed/{A}.collapsed',
-        input_fasta = 'data/{A}'
+        input_files = 'data/{A}'
     output:
         'results/{A}.isomir.tsv',
         'results/{A}.isomir.sequence_info.tsv',
@@ -397,7 +397,7 @@ rule analyze_isomir:
     # SECTION | DISPLAY HEADER AND SUMMARY STATISTICS #################
                 if config['display_summary']:
                     with open(output[0], 'a') as out:
-                        total_reads_in_sample = sum(1 for line in open(input.input_fasta)/4
+                        total_reads_in_sample = sum(1 for line in open(input.input_files))/4
                         summary_out = [[mirna,
                                         motif,
                                         consensus,
