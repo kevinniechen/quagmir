@@ -1,0 +1,6 @@
+*.DS_Store
+logs/
+.snakemake/
+results/
+data/collapsed
+data/realcase*
