@@ -5,9 +5,14 @@ min_read: 9
 display_summary: True
 display_sequence_info: True
 display_nucleotide_dist: True
+display_expression: True
+display_group_output: True
 
 # FUNCTION
 destructive_motif_pull: False
 
 # INPUT
 motif_consensus_file: 'motif-consensus.fa'
+
+# OUTPUT
+group_output_name: 'cohort1'

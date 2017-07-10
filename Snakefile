@@ -166,7 +166,16 @@ def chunkify_file(infilepath, delim=">"):
                 answer.append(chunk)
             except StopIteration:
                 break
-    return answer
+    return answer    
+
+def input_name(prefix, sufix):
+    answer = []
+    for sample in SAMPLES:
+        answer.append(prefix + sample + sufix)
+    return(answer)
+
+def sample_name(input, prefix, sufix):
+    return(input[len(prefix):-len(sufix)])
 
 configfile:
     'config.yaml'
@@ -175,7 +184,11 @@ rule all:
     input:
         expand('results/{A}.isomir.tsv', A=SAMPLES),
         expand('results/{A}.isomir.sequence_info.tsv', A=SAMPLES),
-        expand('results/{A}.isomir.expression.tsv', A=SAMPLES)
+        expand('results/{A}.isomir.expression.tsv', A=SAMPLES),
+        expand('group_results/' + config['group_output_name'] + '.isomir.tsv'),
+        expand('group_results/' + config['group_output_name'] + '.isomir.sequence_info.tsv'),
+        expand('group_results/' + config['group_output_name'] + '.isomir.expression.tsv'),
+        expand('group_results/' + config['group_output_name'] + '.isomir.nucleotide_dist.tsv')
 
 rule collapse_fastq:
     input:
@@ -466,7 +479,7 @@ rule cpm_normalize_motifs:
         'results/{A}.isomir.expression.tsv'
     run:
         first_exp = True
-        if config['display_sequence_info'] and config['display_summary']:
+        if config['display_expression'] and config['display_sequence_info'] and config['display_summary']:
             df = pd.read_csv(input[0], delimiter="\t", header = 0)
             total_reads = pd.read_csv(input[1], delimiter="\t", header = 0, nrows = 2)['TOTAL READS IN SAMPLE'].iloc[0]
             df['CPM'] = df['READS'] / df['READS'].sum() * float(10^6) # TPM is also len-norm
@@ -475,3 +488,44 @@ rule cpm_normalize_motifs:
                 df.to_csv(out, sep='\t', index=False, header=True)
         else:
             open(output[0], 'a').close()
+
+rule group_outputs:
+    input:
+        input_name("results/", ".isomir.tsv"),
+        input_name("results/", ".isomir.sequence_info.tsv"),
+        input_name("results/", ".isomir.expression.tsv"),
+        input_name("results/", ".isomir.nucleotide_dist.tsv")
+    output:
+        'group_results/' + config['group_output_name'] + '.isomir.tsv',
+        'group_results/' + config['group_output_name'] + '.isomir.sequence_info.tsv',
+        'group_results/' + config['group_output_name'] + '.isomir.expression.tsv',
+        'group_results/' + config['group_output_name'] + '.isomir.nucleotide_dist.tsv'
+    run:
+        prefix = "results/"
+        sufix = [".isomir.tsv",
+                 ".isomir.sequence_info.tsv",
+                 ".isomir.expression.tsv",
+                 ".isomir.nucleotide_dict.tsv"]
+        condition = [config['display_group_output'] and config['display_summary'],
+                     config['display_group_output'] and config['display_sequence_info'],
+                     config['display_group_output'] and config['display_expression'] and config['display_summary'] and config['display_sequence_info'],
+                     config['display_group_output'] and config['display_nucleotide_dist']]
+        for i in range(4):
+            if condition[i]:
+                with open(output[i], 'a') as out:
+                    df = pd.read_csv(input[i*len(SAMPLES)], delimiter="\t", header = 0)
+                    df['SAMPLE'] = sample_name(input[i*len(SAMPLES)], prefix, sufix[i])
+                    cols = df.columns.tolist()
+                    cols = cols[-1:] + cols[:-1]
+                    df = df[cols]
+                    df.to_csv(out, sep='\t', index=False, header=True)
+                    for inp in input[i*len(SAMPLES) + 1 : (i+1)*len(SAMPLES)]:
+                        df = pd.read_csv(inp, delimiter="\t", header = 0)
+                        df['SAMPLE'] = sample_name(inp, prefix, sufix[i])
+                        cols = df.columns.tolist()
+                        cols = cols[-1:] + cols[:-1]
+                        df = df[cols]
+                        df.to_csv(out, sep='\t', index=False, header=False)
+            else:
+                open(output[i], 'a').close()
+
