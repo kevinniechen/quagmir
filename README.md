@@ -19,8 +19,8 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 
 ## Quickstart
 
-1. Activate your conda environment: `source activate quagmir`
-2. Add your .fastq_ready samples into the data folder (a sample has been provided for testing):
+1. Set params in **config.yaml**
+2. Add your **.fastq** samples into the **data** folder (a sample has been provided for testing):
   <pre>
   ├── LICENSE
   ├── README.md
@@ -62,7 +62,7 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
   motif_consensus_file: 'motif-consensus.fa'
   ```
 
-5. Run pipeline: `snakemake`
+5. Run pipeline: `snakemake` or `bash run.sh`
 
 ## Update
 Run the commands ```git reset --hard``` and ```git pull```.
