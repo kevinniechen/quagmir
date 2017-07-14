@@ -177,6 +177,40 @@ def input_name(prefix, sufix):
 def sample_name(input, prefix, sufix):
     return(input[len(prefix):-len(sufix)])
 
+def edit_dist_levenshtein(source, target):
+    """
+    Edit distance between 2 strings. 
+    For algorithm (Levenshtein edit distance) consult: 
+    Gusfield D. (1997) Algorithms on Strings, Trees and Sequences.
+    Implementation: en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#Python
+
+    """
+    if len(source) < len(target):
+        return edit_dist_levenshtein(target, source)
+
+    if len(target) == 0:
+        return len(source)
+
+    source = np.array(tuple(source))
+    target = np.array(tuple(target))
+
+    previous_row = np.arange(target.size + 1)
+    for s in source:
+        current_row = previous_row + 1
+
+        current_row[1:] = np.minimum(
+                current_row[1:],
+                np.add(previous_row[:-1], target != s))
+
+        current_row[1:] = np.minimum(
+                current_row[1:],
+                current_row[0:-1] + 1)
+
+        previous_row = current_row
+
+    return previous_row[-1]
+
+
 configfile:
     'config.yaml'
 
@@ -284,6 +318,7 @@ rule analyze_isomir:
                     vari_5p = max(len_trim_5p,
                         calc_tailing(
                             seq_end_5p, consensus_end_5p, len_trim_5p))
+                    distance = edit_dist_levenshtein(consensus,seq)
 
                     # option for not counting same sequence multiple times
                     if (config['destructive_motif_pull'] and
@@ -310,7 +345,7 @@ rule analyze_isomir:
                         # add to display queue
                         table_out.append([mirna, seq, len_read, num_reads,
                                 ratio, len_trim, len_tail, seq_tail,
-                                vari_5p, has_other])
+                                vari_5p, has_other, distance])
 
     # SECTION | MOVE STATISTICS INTO DATAFRAME ############################
                 df = pd.DataFrame(table_out,
@@ -323,7 +358,8 @@ rule analyze_isomir:
                                        "LEN_TAIL",
                                        "SEQ_TAIL",
                                        "VAR_5P",
-                                       "MATCH"])
+                                       "MATCH",
+                                       "DISTANCE"])
 
                 if len(table_out) > 0:
                     df.sort_values(by="READS", ascending=0, inplace=1)
