@@ -16,6 +16,7 @@ import difflib
 import mmap
 import time
 import logging
+from weighted_levenshtein import lev
 from os.path import join
 from os.path import splitext
 from itertools import takewhile
@@ -177,38 +178,6 @@ def input_name(prefix, sufix):
 def sample_name(input, prefix, sufix):
     return(input[len(prefix):-len(sufix)])
 
-def edit_dist_levenshtein(source, target):
-    """
-    Edit distance between 2 strings. 
-    For algorithm (Levenshtein edit distance) consult: 
-    Gusfield D. (1997) Algorithms on Strings, Trees and Sequences.
-    Implementation: en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#Python
-
-    """
-    if len(source) < len(target):
-        return edit_dist_levenshtein(target, source)
-
-    if len(target) == 0:
-        return len(source)
-
-    source = np.array(tuple(source))
-    target = np.array(tuple(target))
-
-    previous_row = np.arange(target.size + 1)
-    for s in source:
-        current_row = previous_row + 1
-
-        current_row[1:] = np.minimum(
-                current_row[1:],
-                np.add(previous_row[:-1], target != s))
-
-        current_row[1:] = np.minimum(
-                current_row[1:],
-                current_row[0:-1] + 1)
-
-        previous_row = current_row
-
-    return previous_row[-1]
 
 
 configfile:
@@ -318,7 +287,6 @@ rule analyze_isomir:
                     vari_5p = max(len_trim_5p,
                         calc_tailing(
                             seq_end_5p, consensus_end_5p, len_trim_5p))
-                    distance = edit_dist_levenshtein(consensus,seq)
 
                     # option for not counting same sequence multiple times
                     if (config['destructive_motif_pull'] and
@@ -345,7 +313,7 @@ rule analyze_isomir:
                         # add to display queue
                         table_out.append([mirna, seq, len_read, num_reads,
                                 ratio, len_trim, len_tail, seq_tail,
-                                vari_5p, has_other, distance])
+                                vari_5p, has_other])
 
     # SECTION | MOVE STATISTICS INTO DATAFRAME ############################
                 df = pd.DataFrame(table_out,
@@ -358,8 +326,7 @@ rule analyze_isomir:
                                        "LEN_TAIL",
                                        "SEQ_TAIL",
                                        "VAR_5P",
-                                       "MATCH",
-                                       "DISTANCE"])
+                                       "MATCH"])
 
                 if len(table_out) > 0:
                     df.sort_values(by="READS", ascending=0, inplace=1)
@@ -546,6 +513,12 @@ rule group_outputs:
                      config['display_group_output'] and config['display_sequence_info'],
                      config['display_group_output'] and config['display_expression'] and config['display_summary'] and config['display_sequence_info'],
                      config['display_group_output'] and config['display_nucleotide_dist']]
+        
+        if config['display_distance_metric']:
+            motifs = motif_consensus_to_dict(config['motif_consensus_file'])
+            mirna_consensus = {v[0]:v[1] for k, v in motifs.items()}
+
+
         for i in range(4):
             if condition[i]:
                 with open(output[i], 'a') as out:
@@ -554,14 +527,69 @@ rule group_outputs:
                     cols = df.columns.tolist()
                     cols = cols[-1:] + cols[:-1]
                     df = df[cols]
-                    df.to_csv(out, sep='\t', index=False, header=True)
                     for inp in input[i*len(SAMPLES) + 1 : (i+1)*len(SAMPLES)]:
-                        df = pd.read_csv(inp, delimiter="\t", header = 0)
-                        df['SAMPLE'] = sample_name(inp, prefix, sufix[i])
-                        cols = df.columns.tolist()
+                        df_rest = pd.read_csv(inp, delimiter="\t", header = 0)
+                        df_rest['SAMPLE'] = sample_name(inp, prefix, sufix[i])
+                        cols = df_rest.columns.tolist()
                         cols = cols[-1:] + cols[:-1]
-                        df = df[cols]
-                        df.to_csv(out, sep='\t', index=False, header=False)
+                        df_rest = df_rest[cols]
+                        df = df.append(df_rest)
+
+                    # add distance metrics to seq_info or expression matrix
+                    if config['display_distance_metric'] and (i==1 or i==2):
+                        consensus = df["MIRNA"].apply(lambda x: mirna_consensus[x])
+                        unique_seqs = set(zip(df["SEQUENCE"], consensus))
+                        edit_distances = {}
+
+                        # set scores from config
+                        delete_costs = np.ones(128, dtype=np.float64)
+                        insert_costs = np.ones(128, dtype=np.float64)
+                        substitute_costs = np.ones((128, 128), dtype=np.float64)
+                        if config['deletion_score']:
+                            delete_costs[ord('A')] = config['deletion_score']
+                            delete_costs[ord('C')] = config['deletion_score']
+                            delete_costs[ord('G')] = config['deletion_score']
+                            delete_costs[ord('T')] = config['deletion_score']
+                        if config['insertion_score']:
+                            insert_costs[ord('A')] = config['insertion_score']
+                            insert_costs[ord('C')] = config['insertion_score']
+                            insert_costs[ord('G')] = config['insertion_score']
+                            insert_costs[ord('T')] = config['insertion_score']
+                        if config['substitution_AG']:
+                            substitute_costs[ord('A'), ord('G')] = config['substitution_AG']
+                        if config['substitution_GA']:
+                            substitute_costs[ord('G'), ord('A')] = config['substitution_GA']
+                        if config['substitution_CT']:
+                            substitute_costs[ord('C'), ord('T')] = config['substitution_CT']
+                        if config['substitution_TC']:
+                            substitute_costs[ord('T'), ord('C')] = config['substitution_TC']
+                        if config['substitution_AT']:
+                            substitute_costs[ord('A'), ord('T')] = config['substitution_AT']
+                        if config['substitution_TA']:
+                            substitute_costs[ord('T'), ord('A')] = config['substitution_TA']
+                        if config['substitution_AC']:
+                            substitute_costs[ord('A'), ord('C')] = config['substitution_AC']
+                        if config['substitution_CA']:
+                            substitute_costs[ord('C'), ord('A')] = config['substitution_CA']
+                        if config['substitution_GC']:
+                            substitute_costs[ord('G'), ord('C')] = config['substitution_GC']
+                        if config['substitution_CG']:
+                            substitute_costs[ord('C'), ord('G')] = config['substitution_CG']
+                        if config['substitution_GT']:
+                            substitute_costs[ord('G'), ord('T')] = config['substitution_GT']
+                        if config['substitution_TG']:
+                            substitute_costs[ord('T'), ord('G')] = config['substitution_TG']
+
+                        for pair in unique_seqs:
+                            edit_distances[pair] = lev(pair[0], pair[1], 
+                                delete_costs = delete_costs, 
+                                substitute_costs = substitute_costs,
+                                insert_costs = insert_costs)
+
+                        df['DISTANCE'] = df[['SEQUENCE', 'MIRNA']].apply(lambda row:
+                                         edit_distances[(row[0], mirna_consensus[row[1]])], 
+                                         axis=1)
+                    df.to_csv(out, sep='\t', index=False, header=True)
             else:
                 open(output[i], 'a').close()
 

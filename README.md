@@ -19,8 +19,7 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 
 ## Quickstart
 
-1. Set params in **config.yaml**
-2. Add your **.fastq** samples into the **data** folder (a sample has been provided for testing):
+1. Add your **.fastq** samples into the **data** folder (a sample has been provided for testing):
   <pre>
   ├── LICENSE
   ├── README.md
@@ -36,7 +35,7 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
   │   └── tabular/
   </pre>
 
-3. Edit the **motif-consensus.fa** file to insert your miRNA information with the following format:
+2. Edit the **motif-consensus.fa** file to insert your miRNA information with the following format:
   ```
   >miRNA_name miRNA_motif
   miRNA_consensus_sequence
@@ -45,7 +44,7 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
   CCGACACCCTGGCCGGGTTGT
   ```
 
-4. Edit the **config.yaml** file to change configuration options if needed (default values fine in most use cases):
+3. Edit the **config.yaml** file to change configuration options if needed (default values fine in most use cases):
   ```
   # DISPLAY
   min_ratio: .001
@@ -62,7 +61,7 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
   motif_consensus_file: 'motif-consensus.fa'
   ```
 
-5. Run pipeline: `snakemake` or `bash run.sh`
+4. Run pipeline: `bash run.sh` or activate conda env and run `snakemake`
 
 ## Update
 Run the commands ```git reset --hard``` and ```git pull```.
@@ -96,7 +95,7 @@ Quagmir also has an optional flag (off by default) to skip reads that:
 ## Notes
 The step of collapsing sample files takes the longest time, but once the samples are collapsed, and you need to re-run the pipeline, the pipeline will automatically start from the collapsed files and take a far shorter amount of time
 
-Output will be a **sample.fastq_ready.results.txt** file for each sample in the **results/** folder
+Output will be a **sample.fastq.results.txt** file for each sample in the **results/** folder
 
 ## Planned features
 - Have a provided primary miRNA transcript for each miRNA either in
