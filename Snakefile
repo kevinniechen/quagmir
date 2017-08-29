@@ -16,6 +16,7 @@ import difflib
 import mmap
 import time
 import logging
+from weighted_levenshtein import lev
 from os.path import join
 from os.path import splitext
 from itertools import takewhile
@@ -28,7 +29,6 @@ TIMESTAMP = time.strftime('%d-%b-%Y@%I:%M:%S%p')
 SAMPLES = [os.path.basename(f) for f in glob.glob('data/*')]
 
 ###############################################################################
-
 
 def has_substitution_3p(len_trim, seq_end, consensus_end):
     if len_trim > 3:
@@ -53,7 +53,6 @@ def calc_trimming(seq_end, consensus_end):
         return len(consensus_end) - len(seq_end)
     return 0
 
-
 def calc_trimming_5p(seq_end, consensus_end):
     for i in range(0, min(len(seq_end), len(consensus_end))):
         if seq_end[len(seq_end) - i - 1] != consensus_end[len(
@@ -64,10 +63,8 @@ def calc_trimming_5p(seq_end, consensus_end):
         return len(consensus_end) - len(seq_end)
     return 0
 
-
 def calc_tailing(seq_end, consensus_end, trim_len):
     return (len(seq_end) - len(consensus_end) + trim_len)
-
 
 def get_tailing_seq(seq, tail_len):
     if tail_len is not 0:
@@ -75,13 +72,11 @@ def get_tailing_seq(seq, tail_len):
     else:
         return '-'
 
-
 def get_tailing_seq_5p(seq, tail_len):
     if tail_len is not 0:
         return seq[:tail_len]
     else:
         return '-'
-
 
 def find_in_file(file, string):
     try:
@@ -94,7 +89,6 @@ def find_in_file(file, string):
         return False
     else:
         return False
-
 
 def motif_consensus_to_dict(file):
     ordered_dict = co.OrderedDict()
@@ -115,7 +109,6 @@ def motif_consensus_to_dict(file):
                 "************************************\n")
         ordered_dict[motif] = [mirna, consensus]
     return ordered_dict
-
 
 def other_motifs_pulled_seq(dict_mirna_consensus, line, motif):
     annotation = ""
@@ -174,7 +167,16 @@ def chunkify_file(infilepath, delim=">"):
                 answer.append(chunk)
             except StopIteration:
                 break
-    return answer
+    return answer    
+
+def input_name(prefix, sufix):
+    answer = []
+    for sample in SAMPLES:
+        answer.append(prefix + sample + sufix)
+    return(answer)
+
+def sample_name(input, prefix, sufix):
+    return(input[len(prefix):-len(sufix)])
 
 
 
@@ -183,10 +185,13 @@ configfile:
 
 rule all:
     input:
-        expand('results/tabular/{A}.isomir.tsv', A=SAMPLES),
-        expand('results/text/{A}.mirna.txt', A=SAMPLES),
-        expand('results/tabular/{A}.isomir.sequence_info.tsv', A=SAMPLES),
-        expand('results/tabular/{A}.isomir.expression.tsv', A=SAMPLES)
+        expand('results/{A}.isomir.tsv', A=SAMPLES),
+        expand('results/{A}.isomir.sequence_info.tsv', A=SAMPLES),
+        expand('results/{A}.isomir.expression.tsv', A=SAMPLES),
+        expand('group_results/' + config['group_output_name'] + '.isomir.tsv'),
+        expand('group_results/' + config['group_output_name'] + '.isomir.sequence_info.tsv'),
+        expand('group_results/' + config['group_output_name'] + '.isomir.expression.tsv'),
+        expand('group_results/' + config['group_output_name'] + '.isomir.nucleotide_dist.tsv')
 
 rule collapse_fastq:
     input:
@@ -199,11 +204,12 @@ rule collapse_fastq:
 rule analyze_isomir:
     input:
         motif_consensus = config['motif_consensus_file'],
-        collapsed_fasta = 'collapsed/{A}.collapsed'
+        collapsed_fasta = 'collapsed/{A}.collapsed',
+        input_files = 'data/{A}'
     output:
-        'results/tabular/{A}.isomir.tsv',
-        'results/tabular/{A}.isomir.sequence_info.tsv',
-        'results/tabular/{A}.isomir.nucleotide_dist.tsv'
+        'results/{A}.isomir.tsv',
+        'results/{A}.isomir.sequence_info.tsv',
+        'results/{A}.isomir.nucleotide_dist.tsv'
     log:
         os.path.join("logs/", TIMESTAMP)
     run:
@@ -217,8 +223,6 @@ rule analyze_isomir:
                 logging.info(str(key) + ':\t' + str(val))
             config_logged = True
         logging.debug("Start sample: " + input.collapsed_fasta)
-        with open(output[0], 'a') as out:
-            out.write(TIMESTAMP + '\n')
 
         # SECTION | SETUP MIRNA CONSENSUS DICT #####################################
         dict_mirna_consensus = motif_consensus_to_dict(input.motif_consensus)
@@ -231,6 +235,7 @@ rule analyze_isomir:
         #             total_mapped_reads += int(ln.split("\t")[1])
 
         # SECTION | MIRNA LOOP ################################################
+        first_ds = True
         first_dsi = True
         first_dnd = True
         for motif, value in dict_mirna_consensus.items():
@@ -408,36 +413,47 @@ rule analyze_isomir:
     # SECTION | DISPLAY HEADER AND SUMMARY STATISTICS #################
                 if config['display_summary']:
                     with open(output[0], 'a') as out:
-                        out.write('==========================\n' +
-                                  '>' + mirna + '\n')
-                        out.write('motif:\t' + motif + '\n')
-                        out.write('consensus:\t' + consensus + '\n')
-                        out.write('total-reads:\t' +
-                                  str(int(total_reads)) + '\n')
-                        out.write('total-isomirs:\t' +
-                                   str(total_isomirs) + '\n')
-                        out.write('fidelity-5p:\t' +
-                                  str(fidelity) + '\n')
-                        out.write('A-tailing:\t' +
-                                  ratio_a_tailing + '%\n')
-                        out.write('C-tailing:\t' +
-                                  ratio_c_tailing + '%\n')
-                        out.write('G-tailing:\t' +
-                                  ratio_g_tailing + '%\n')
-                        out.write('T-tailing:\t' +
-                                  ratio_t_tailing + '%\n')
-                        out.write('sequence-trimming-only:\t' +
-                                  str(ratio_seq_trim_only) + '%\n')
-                        out.write('sequence-trimming:\t' +
-                                  str(ratio_seq_trim_only + ratio_seq_trim_and_tail) + '%\n')
-                        out.write('sequence-tailing-only:\t' +
-                                  str(ratio_seq_tail_only) + '%\n')
-                        out.write('sequence-tailing:\t' +
-                                  str(ratio_seq_tail_only + ratio_seq_trim_and_tail) + '%\n')
-                        out.write('sequence-trimming-and-tailing:\t' +
-                                  str(ratio_seq_trim_and_tail) + '%\n')
-                        out.write('\n')
-
+                        total_reads_in_sample = sum(1 for line in open(input.input_files))/4
+                        summary_out = [[mirna,
+                                        motif,
+                                        consensus,
+                                        str(int(total_reads)),
+                                        str(total_isomirs),
+                                        str(fidelity),
+                                        ratio_a_tailing,
+                                        ratio_c_tailing,
+                                        ratio_g_tailing,
+                                        ratio_t_tailing,
+                                        str(ratio_seq_trim_only),
+                                        str(ratio_seq_trim_only + ratio_seq_trim_and_tail),
+                                        str(ratio_seq_tail_only),
+                                        str(ratio_seq_tail_only + ratio_seq_trim_and_tail),
+                                        str(ratio_seq_trim_and_tail),
+                                        str(int(total_reads_in_sample))]]
+                        df3 = pd.DataFrame(summary_out,
+                                           columns = ["MIRNA",
+                                                      "MOTIF",
+                                                      "CONSENSUS",
+                                                      "TOTAL READS",
+                                                      "TOTAL ISOMIRS",
+                                                      "FIDELITY 5P",
+                                                      "A TAILING",
+                                                      "C TAILING",
+                                                      "G TAILING",
+                                                      "T TAILING",
+                                                      "SEQUENCE TRIMMING ONLY",
+                                                      "SEQUENCE TRIMMING",
+                                                      "SEQUENCE TAILING ONLY",
+                                                      "SEQUENCE TAILING",
+                                                      "SEQUENCE TRIMMING AND TAILING",
+                                                      "TOTAL READS IN SAMPLE"])
+                        if first_ds:
+                            df3.to_csv(out, sep='\t', index = False)
+                            first_ds = False
+                        else:
+                            df3.to_csv(out, sep='\t', index=False, header = False)
+                else:
+                    open(output[0], 'a').close()
     # SECTION | DISPLAY SEQUENCES AND SINGLE STATISTICS ###############
                 if config['display_sequence_info']:
                     with open(output[1], 'a') as out:
@@ -458,35 +474,122 @@ rule analyze_isomir:
                 else:
                     open(output[2], 'a').close()
 
-rule summarize_fastq:
-    input:
-        'data/{A}',
-        'results/tabular/{A}.isomir.tsv'
-    output:
-        'results/text/{A}.mirna.txt'
-    shell:
-        """
-        total_reads=$(($(cat {input[0]} | wc -l) / 4))
-        echo "Total miR reads in sample: $total_reads" >> {output}
-        grep ">hsa\|total-reads" {input[1]} | cat >> {output}
-        echo "\n" >> {output}
-        """
-
 rule cpm_normalize_motifs:
     input:
-        'results/tabular/{A}.isomir.sequence_info.tsv',
-        'results/text/{A}.mirna.txt'
+        'results/{A}.isomir.sequence_info.tsv',
+        'results/{A}.isomir.tsv'
     output:
-        'results/tabular/{A}.isomir.expression.tsv'
+        'results/{A}.isomir.expression.tsv'
     run:
         first_exp = True
-        if config['display_sequence_info'] and config['display_summary']:
+        if config['display_expression'] and config['display_sequence_info'] and config['display_summary']:
             df = pd.read_csv(input[0], delimiter="\t", header = 0)
-            with open(str(input[1]), "rt") as txt:
-                total_reads = int(txt.readline().split(": ")[1])
+            total_reads = pd.read_csv(input[1], delimiter="\t", header = 0, nrows = 2)['TOTAL READS IN SAMPLE'].iloc[0]
             df['CPM'] = df['READS'] / df['READS'].sum() * float(10^6) # TPM is also len-norm
             df['RPKM'] = df['READS'] / df['LEN_READ'] / total_reads * float(10^9)
             with open(output[0], 'a') as out:
                 df.to_csv(out, sep='\t', index=False, header=True)
         else:
             open(output[0], 'a').close()
+
+rule group_outputs:
+    input:
+        input_name("results/", ".isomir.tsv"),
+        input_name("results/", ".isomir.sequence_info.tsv"),
+        input_name("results/", ".isomir.expression.tsv"),
+        input_name("results/", ".isomir.nucleotide_dist.tsv")
+    output:
+        'group_results/' + config['group_output_name'] + '.isomir.tsv',
+        'group_results/' + config['group_output_name'] + '.isomir.sequence_info.tsv',
+        'group_results/' + config['group_output_name'] + '.isomir.expression.tsv',
+        'group_results/' + config['group_output_name'] + '.isomir.nucleotide_dist.tsv'
+    run:
+        prefix = "results/"
+        sufix = [".isomir.tsv",
+                 ".isomir.sequence_info.tsv",
+                 ".isomir.expression.tsv",
+                 ".isomir.nucleotide_dict.tsv"]
+        condition = [config['display_group_output'] and config['display_summary'],
+                     config['display_group_output'] and config['display_sequence_info'],
+                     config['display_group_output'] and config['display_expression'] and config['display_summary'] and config['display_sequence_info'],
+                     config['display_group_output'] and config['display_nucleotide_dist']]
+        
+        if config['display_distance_metric']:
+            motifs = motif_consensus_to_dict(config['motif_consensus_file'])
+            mirna_consensus = {v[0]:v[1] for k, v in motifs.items()}
+
+
+        for i in range(4):
+            if condition[i]:
+                with open(output[i], 'a') as out:
+                    df = pd.read_csv(input[i*len(SAMPLES)], delimiter="\t", header = 0)
+                    df['SAMPLE'] = sample_name(input[i*len(SAMPLES)], prefix, sufix[i])
+                    cols = df.columns.tolist()
+                    cols = cols[-1:] + cols[:-1]
+                    df = df[cols]
+                    for inp in input[i*len(SAMPLES) + 1 : (i+1)*len(SAMPLES)]:
+                        df_rest = pd.read_csv(inp, delimiter="\t", header = 0)
+                        df_rest['SAMPLE'] = sample_name(inp, prefix, sufix[i])
+                        cols = df_rest.columns.tolist()
+                        cols = cols[-1:] + cols[:-1]
+                        df_rest = df_rest[cols]
+                        df = df.append(df_rest)
+
+                    # add distance metrics to seq_info or expression matrix
+                    if config['display_distance_metric'] and (i==1 or i==2):
+                        consensus = df["MIRNA"].apply(lambda x: mirna_consensus[x])
+                        unique_seqs = set(zip(df["SEQUENCE"], consensus))
+                        edit_distances = {}
+
+                        # set scores from config
+                        delete_costs = np.ones(128, dtype=np.float64)
+                        insert_costs = np.ones(128, dtype=np.float64)
+                        substitute_costs = np.ones((128, 128), dtype=np.float64)
+                        if config['deletion_score']:
+                            delete_costs[ord('A')] = config['deletion_score']
+                            delete_costs[ord('C')] = config['deletion_score']
+                            delete_costs[ord('G')] = config['deletion_score']
+                            delete_costs[ord('T')] = config['deletion_score']
+                        if config['insertion_score']:
+                            insert_costs[ord('A')] = config['insertion_score']
+                            insert_costs[ord('C')] = config['insertion_score']
+                            insert_costs[ord('G')] = config['insertion_score']
+                            insert_costs[ord('T')] = config['insertion_score']
+                        if config['substitution_AG']:
+                            substitute_costs[ord('A'), ord('G')] = config['substitution_AG']
+                        if config['substitution_GA']:
+                            substitute_costs[ord('G'), ord('A')] = config['substitution_GA']
+                        if config['substitution_CT']:
+                            substitute_costs[ord('C'), ord('T')] = config['substitution_CT']
+                        if config['substitution_TC']:
+                            substitute_costs[ord('T'), ord('C')] = config['substitution_TC']
+                        if config['substitution_AT']:
+                            substitute_costs[ord('A'), ord('T')] = config['substitution_AT']
+                        if config['substitution_TA']:
+                            substitute_costs[ord('T'), ord('A')] = config['substitution_TA']
+                        if config['substitution_AC']:
+                            substitute_costs[ord('A'), ord('C')] = config['substitution_AC']
+                        if config['substitution_CA']:
+                            substitute_costs[ord('C'), ord('A')] = config['substitution_CA']
+                        if config['substitution_GC']:
+                            substitute_costs[ord('G'), ord('C')] = config['substitution_GC']
+                        if config['substitution_CG']:
+                            substitute_costs[ord('C'), ord('G')] = config['substitution_CG']
+                        if config['substitution_GT']:
+                            substitute_costs[ord('G'), ord('T')] = config['substitution_GT']
+                        if config['substitution_TG']:
+                            substitute_costs[ord('T'), ord('G')] = config['substitution_TG']
+
+                        for pair in unique_seqs:
+                            edit_distances[pair] = lev(pair[0], pair[1], 
+                                delete_costs = delete_costs, 
+                                substitute_costs = substitute_costs,
+                                insert_costs = insert_costs)
+
+                        df['DISTANCE'] = df[['SEQUENCE', 'MIRNA']].apply(lambda row:
+                                         edit_distances[(row[0], mirna_consensus[row[1]])], 
+                                         axis=1)
+                    df.to_csv(out, sep='\t', index=False, header=True)
+            else:
+                open(output[i], 'a').close()
+
