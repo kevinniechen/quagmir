@@ -59,6 +59,6 @@ dependencies:
   - python-dateutil==2.3
   - snakemake==3.7.1
   - urllib3==1.12
-  - git+https://github.com/duxan/weighted-levenshtein.git
+  - git+https://github.com/infoscout/weighted-levenshtein.git
 prefix: /Users/chenk8/miniconda3/envs/quagmir
 

@@ -7,7 +7,7 @@ display_sequence_info: True
 display_nucleotide_dist: True
 display_expression: True
 display_group_output: True
-display_distance_metric: False
+display_distance_metric: True
 
 # FUNCTION
 destructive_motif_pull: False

@@ -93,9 +93,11 @@ Quagmir also has an optional flag (off by default) to skip reads that:
 **Biologically, a read can only belong to one miRNA**
 
 ## Notes
-The step of collapsing sample files takes the longest time, but once the samples are collapsed, and you need to re-run the pipeline, the pipeline will automatically start from the collapsed files and take a far shorter amount of time
+The step of collapsing sample files takes the longest time, but once the samples are collapsed, and you need to re-run the pipeline, the pipeline will automatically start from the collapsed files and take a far shorter amount of time.
 
-Output will be a **sample.fastq.results.txt** file for each sample in the **results/** folder
+To save time you may consider to skip distance metric (weighted-levenstein distance) which is calculated on group results.
+
+Output will be a **sample.fastq.results.txt** file for each sample in the **results/** folder and grouped results if multiple files are provided. All resulting files are in tabular (TSV) format.
 
 ## Planned features
 - Have a provided primary miRNA transcript for each miRNA either in
