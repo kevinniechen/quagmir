@@ -1,14 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="42fee814-b2e4-4c5c-be6a-924f5626354b" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/playground.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.gitignore" afterPath="$PROJECT_DIR$/.gitignore" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Snakefile" afterPath="$PROJECT_DIR$/Snakefile" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/config.yaml" afterPath="$PROJECT_DIR$/config.yaml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/motif-consensus.fa" afterPath="$PROJECT_DIR$/motif-consensus.fa" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/run.sh" afterPath="$PROJECT_DIR$/run.sh" />
-    </list>
+    <list default="true" id="42fee814-b2e4-4c5c-be6a-924f5626354b" name="Default" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -21,21 +14,11 @@
       <file leaf-file-name="Snakefile" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/Snakefile">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-964">
-              <caret line="261" column="79" lean-forward="true" selection-start-line="261" selection-start-column="79" selection-end-line="261" selection-end-column="79" />
+            <state relative-caret-position="1896">
+              <caret line="261" column="79" lean-forward="false" selection-start-line="261" selection-start-column="79" selection-end-line="261" selection-end-column="79" />
               <folding>
                 <element signature="e#147#158#0" expanded="true" />
               </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="playground.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/playground.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="0">
-              <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="5" selection-end-column="0" />
-              <folding />
             </state>
           </provider>
         </entry>
@@ -474,8 +457,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/Snakefile">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-964">
-          <caret line="261" column="79" lean-forward="true" selection-start-line="261" selection-start-column="79" selection-end-line="261" selection-end-column="79" />
+        <state relative-caret-position="1896">
+          <caret line="261" column="79" lean-forward="false" selection-start-line="261" selection-start-column="79" selection-end-line="261" selection-end-column="79" />
           <folding>
             <element signature="e#147#158#0" expanded="true" />
           </folding>
