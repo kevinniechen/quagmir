@@ -5,7 +5,6 @@ min_read: 9
 display_summary: True
 display_sequence_info: True
 display_nucleotide_dist: True
-display_expression: True
 display_group_output: True
 display_distance_metric: True
 
