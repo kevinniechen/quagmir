@@ -227,17 +227,15 @@ def sample_name(input, prefix, sufix):
 configfile:
     'config.yaml'
 
-#ruleorder: collapse_fastq > analyze_isomir > cpm_normalize_motifs > group_outputs
 
 rule all:
     input:
         expand('results/{A}.isomir.tsv', A=SAMPLES),
         expand('results/{A}.isomir.sequence_info.tsv', A=SAMPLES),
-        expand('results/{A}.isomir.expression.tsv', A=SAMPLES),
         expand('group_results/' + config['group_output_name'] + '.isomir.tsv'),
         expand('group_results/' + config['group_output_name'] + '.isomir.sequence_info.tsv'),
-        expand('group_results/' + config['group_output_name'] + '.isomir.expression.tsv'),
         expand('group_results/' + config['group_output_name'] + '.isomir.nucleotide_dist.tsv')
+
 
 rule collapse_fastq:
     input:
@@ -246,6 +244,7 @@ rule collapse_fastq:
         'collapsed/{A}.collapsed'
     shell:
         'awk "NR%4==2" {input} | sort -S1900G | uniq -c > {output}'
+
 
 rule analyze_isomir:
     input:
@@ -269,7 +268,6 @@ rule analyze_isomir:
                 logging.info(str(key) + ':\t' + str(val))
             config_logged = True
         logging.debug("Start sample: " + input.collapsed_fasta)
-
         # SECTION | SETUP MIRNA CONSENSUS DICT ################################
         dict_mirna_consensus = motif_consensus_to_dict(input.motif_consensus)
 
@@ -277,6 +275,9 @@ rule analyze_isomir:
         first_ds = True
         first_dsi = True
         first_dnd = True
+        open(output[0], 'a').close()
+        open(output[1], 'a').close()
+        open(output[2], 'a').close()
         for motif, value in dict_mirna_consensus.items():
             mirna = value[0]
             consensus = value[1]
@@ -327,16 +328,12 @@ rule analyze_isomir:
                             seq_end_5p, consensus_end_5p, len_trim_5p))
 
                     # option for not counting same sequence multiple times
-                    if (config['destructive_motif_pull'] and
-                       len(has_other) > 0 and  # seq maps to multiple miR
-                       find_in_file(output[0], seq)):  # check prev
-                           logging.warning(
-                           'Skipped ' + seq + ' ' + mirna)
+                    if config['destructive_motif_pull'] and len(has_other) > 0 and find_in_file(output[0], seq):
+                        logging.warning('Skipped ' + seq + ' ' + mirna)
                     elif config['filter_out_5p'] and has_substitution_5p(seq_end_5p, consensus_end_5p):
                         logging.warning(
                         'Skipped (5p substitution) ' + seq + ' ' + mirna)
-                    elif config['filter_out_3p'] and has_substitution_3p(len_trim, seq_end_3p,
-                        consensus_end_3p):
+                    elif config['filter_out_3p'] and has_substitution_3p(len_trim, seq_end_3p, consensus_end_3p):
                         logging.warning(
                         'Skipped (3p sequencing error) ' + seq + ' ' +
                             str(len_trim) + ' ' + mirna)
@@ -366,7 +363,6 @@ rule analyze_isomir:
                                        "SEQ_TAIL",
                                        "VAR_5P",
                                        "MATCH"])
-
                 if len(table_out) > 0:
                     df.sort_values(by="READS", ascending=0, inplace=1)
 
@@ -380,6 +376,11 @@ rule analyze_isomir:
                 df['RATIO'] = df['READS'].apply(lambda x: round(100*x/total_reads, 2))
                 df2 = pd.DataFrame(freq_nt)
                 df2['MIRNA'] = mirna
+                for base in comparison:
+                    if base not in df2:
+                        df2[base] = 0.0
+                    else:
+                        df2[base] = df2[base].fillna(0.0)
                 if "N" not in df2:
                     df2["N"] = 0.0
                 else:
@@ -390,9 +391,10 @@ rule analyze_isomir:
                         :, "A":"T"].div(df2["READS"], axis=0)
                     df2 = np.round(df2, decimals=4)
                     df2.index.name = 'NT_POSITION'
-                df2.set_index('MIRNA', append=True, inplace=True)
-                df2 = df2.swaplevel(0, 1)
-                df2 = df2[["A", "C", "G", "T", "N", "READS"]]
+                    df2.set_index('MIRNA', append=True, inplace=True)
+                    df2 = df2.swaplevel(0, 1)
+                    df2 = df2[["A", "C", "G", "T", "R", "Y", "S", "W", "K", "M",
+                               "B", "D", "H", "V", "N", "READS"]]
 
     # SECTION | GENERATE SUMMARY STATISTICS ###################################
                 # calculate 5' fidelity score
@@ -449,10 +451,17 @@ rule analyze_isomir:
                 if (df['LEN_TRIM'].iloc[0] == 0 and df['LEN_TAIL'].iloc[0] == 0):
                     total_isomirs -= 1
 
+    # SECTION | CALCULATE CPM AND RPKM OF READS ###############################
+                total_reads_in_sample = sum(1 for line in open(input.input_files)) / 4
+                df = pd.read_csv(input[0], delimiter="\t", header=0)
+                df['CPM'] = df['READS'] / df['READS'].sum() * float(
+                    10 ** 6)  # TPM is also len-norm
+                df['RPKM'] = df['READS'] / df[
+                    'LEN_READ'] / total_reads_in_sample * float(10 ** 9)
+
     # SECTION | DISPLAY HEADER AND SUMMARY STATISTICS #########################
                 if config['display_summary']:
                     with open(output[0], 'a') as out:
-                        total_reads_in_sample = sum(1 for line in open(input.input_files))/4
                         summary_out = [[mirna,
                                         motif,
                                         consensus,
@@ -491,8 +500,7 @@ rule analyze_isomir:
                             first_ds = False
                         else:
                             df3.to_csv(out, sep='\t', index=False, header = False)
-                else:
-                    open(output[0], 'a').close()
+
     # SECTION | DISPLAY SEQUENCES AND SINGLE STATISTICS ###############
                 if config['display_sequence_info']:
                     with open(output[1], 'a') as out:
@@ -501,8 +509,6 @@ rule analyze_isomir:
                             first_dsi = False
                         else:
                             df.to_csv(out, sep='\t', index=False, header = False)
-                else:
-                    open(output[1], 'a').close()
                 if config['display_nucleotide_dist']:
                     with open(output[2], 'a') as out:
                         if first_dnd:
@@ -510,56 +516,35 @@ rule analyze_isomir:
                             first_dnd = False
                         else:
                             df2.to_csv(out, sep='\t', header = False)
-                else:
-                    open(output[2], 'a').close()
 
-rule cpm_normalize_motifs:
-    input:
-        'results/{A}.isomir.sequence_info.tsv',
-        'results/{A}.isomir.tsv'
-    output:
-        'results/{A}.isomir.expression.tsv'
-    run:
-        first_exp = True
-        if config['display_expression'] and config['display_sequence_info'] and config['display_summary']:
-            df = pd.read_csv(input[0], delimiter="\t", header = 0)
-            total_reads = pd.read_csv(input[1], delimiter="\t", header = 0, nrows = 2)['TOTAL READS IN SAMPLE'].iloc[0]
-            df['CPM'] = df['READS'] / df['READS'].sum() * float(10**6) # TPM is also len-norm
-            df['RPKM'] = df['READS'] / df['LEN_READ'] / total_reads * float(10**9)
-            with open(output[0], 'a') as out:
-                df.to_csv(out, sep='\t', index=False, header=True)
-        else:
-            open(output[0], 'a').close()
 
 rule group_outputs:
     input:
         input_name("results/", ".isomir.tsv"),
         input_name("results/", ".isomir.sequence_info.tsv"),
-        input_name("results/", ".isomir.expression.tsv"),
         input_name("results/", ".isomir.nucleotide_dist.tsv")
     output:
         'group_results/' + config['group_output_name'] + '.isomir.tsv',
         'group_results/' + config['group_output_name'] + '.isomir.sequence_info.tsv',
-        'group_results/' + config['group_output_name'] + '.isomir.expression.tsv',
         'group_results/' + config['group_output_name'] + '.isomir.nucleotide_dist.tsv'
     run:
         prefix = "results/"
         sufix = [".isomir.tsv",
                  ".isomir.sequence_info.tsv",
-                 ".isomir.expression.tsv",
                  ".isomir.nucleotide_dict.tsv"]
         condition = [config['display_group_output'] and config['display_summary'],
                      config['display_group_output'] and config['display_sequence_info'],
-                     config['display_group_output'] and config['display_expression'] and config['display_summary'] and config['display_sequence_info'],
                      config['display_group_output'] and config['display_nucleotide_dist']]
 
         if config['display_distance_metric']:
             motifs = motif_consensus_to_dict(config['motif_consensus_file'])
             mirna_consensus = {v[0]:v[1] for k, v in motifs.items()}
 
-
-        for i in range(4):
-            if condition[i]:
+        for i in range(3):
+            open(output[i], 'a').close()
+            with open(input[i]) as input_file:
+                first_char = input_file.read(1)
+            if condition[i] and first_char:
                 with open(output[i], 'a') as out:
                     df = pd.read_csv(input[i*len(SAMPLES)], delimiter="\t", header = 0)
                     df['SAMPLE'] = sample_name(input[i*len(SAMPLES)], prefix, sufix[i])
@@ -639,6 +624,3 @@ rule group_outputs:
                                          edit_distances[(row[0], mirna_consensus[row[1]])],
                                          axis=1)
                     df.to_csv(out, sep='\t', index=False, header=True)
-            else:
-                open(output[i], 'a').close()
-
