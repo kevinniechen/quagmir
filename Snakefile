@@ -359,7 +359,6 @@ rule analyze_isomir:
                 df['RATIO'] = df['READS'].apply(lambda x: round(100*x/total_reads, 2))
                 df2 = pd.DataFrame(freq_nt)
                 df2['MIRNA'] = mirna
-                base_ord = ord(base)
                 for base in bases:
                     if base not in df2:
                         df2[base] = 0.0
