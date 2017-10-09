@@ -30,48 +30,25 @@ SAMPLES = [os.path.basename(f) for f in glob.glob('data/*')]
 
 ###############################################################################
 
-comparison = dict(A=['A'], C=['C'], G=['G'], T=['T'], R=['A', 'G'],
-                  Y=['C', 'T'], S=['G', 'C'], W=['A', 'T'], K=['G', 'T'],
-                  M=['A', 'C'], B=['C', 'G', 'T'], D=['A', 'G', 'T'],
-                  H=['A', 'C', 'T'], V=['A', 'C', 'G'])
+bases = ["A", "C", "G", "T", "R", "Y", "S", "W", "K", "M", "B", "D", "H", "V",
+         "N"]
+base_ords = (A, C, G, T, R, Y, S, W, K, M, B, D, H, V,
+         N) = (65, 67, 71, 84, 82, 89, 83, 87, 75, 77, 66, 68, 72, 86, 78)
+comparison_ord = dict([(A, {A}), (C, {C}), (G, {G}), (T, {T}), (R, {A, G}),
+                       (Y, {C, T}), (S, {C, G}), (W, {A, T}), (K, {G, T}),
+                       (M, {A, C}), (B, {C, G, T}), (D, {A, G, T}),
+                       (H, {A, C, T}), (V, {A, C, G})])
 
-
-#class mystr(str):
-#    def __contains__(self, value):
-#        if 'R' in value:
-#            return super().__contains__('A') or super().__contains__('G')
-#        return super().__contains__(value)
-#class MyChars:
-#    __slots__ = ['N', 'A']
-#R = 78
-#A = 65
-#G = 71
 
 def compare_chars(fastq, consensus):
-
-#    l = ord(fastq)
-#    r = ord(consensus)
-#    if not r ^ R:
-#        if not (l ^ A and l ^ G ):
-#            return True
-#        return False
-
-    if fastq == 'N' or consensus == 'N':
+    fastq_ord = ord(fastq)
+    consensus_ord = ord(consensus)
+    if not (fastq_ord ^ N and consensus_ord ^ N):
         return True
-    return fastq in comparison[consensus]
-
-
-#class mystr(str):
-#    def __contains__(self, fastq):
-#        for i in range(len(fastq)):
-#            if not compare_chars(fastq[i], self[i]):
-#                return False
-#        return True
+    return fastq_ord in comparison_ord[consensus_ord]
 
 
 def compare_strings(fastq, consensus):
-#    consensus = mystr(consensus)
-#    return fastq in consensus
     if len(fastq) != len(consensus):
         return False
     for i in range(len(fastq)):
@@ -99,14 +76,16 @@ def has_substitution_3p(len_trim, seq_end, consensus_end):
     if len_trim > 3:
         right = min(len(seq_end), len(consensus_end))
         left = max(0, len(seq_end) - len_trim + 1)
-        if left < right and compare_strings(seq_end[left:right], consensus_end[left:right]):
+        if left < right and compare_strings(seq_end[left:right], consensus_end[
+                                                                 left:right]):
             return False
     return True
 
 
 def has_substitution_5p(seq_end, consensus_end):
     for i in range(0, min(len(seq_end), len(consensus_end))):
-        if not compare_chars(seq_end[len(seq_end) - i - 1], consensus_end[len(consensus_end) - i - 1]):
+        if not compare_chars(seq_end[len(seq_end) - i - 1], consensus_end[len(
+                consensus_end) - i - 1]):
             return True
     return False
 
@@ -122,7 +101,8 @@ def calc_trimming(seq_end, consensus_end):
 
 def calc_trimming_5p(seq_end, consensus_end):
     for i in range(0, min(len(seq_end), len(consensus_end))):
-        if not compare_chars(seq_end[len(seq_end) - i - 1], consensus_end[len(consensus_end) - i - 1]):
+        if not compare_chars(seq_end[len(seq_end) - i - 1], consensus_end[len(
+                consensus_end) - i - 1]):
             return len(consensus_end) - i
     if len(seq_end) < len(consensus_end):
         return len(consensus_end) - len(seq_end)
@@ -169,7 +149,8 @@ def motif_consensus_to_dict(file):
         motif = seq_record.description.split()[1]
         consensus = str(seq_record.seq)
         if motif in ordered_dict:
-            logging.info('Motif ' + motif + ' encountered more than once in ' + file + ': only first occurrence is kept')
+            logging.info('Motif ' + motif + ' encountered more than once in ' +
+                         file + ': only first occurrence is kept')
             continue
         ordered_dict[motif] = [mirna, consensus]
     return ordered_dict
@@ -178,7 +159,8 @@ def motif_consensus_to_dict(file):
 def other_motifs_pulled_seq(dict_mirna_consensus, line, motif):
     annotation = ""
     list_motifs = list(dict_mirna_consensus.keys())
-    matching_motifs = [x for x in list_motifs if contains_motif(line, x) if x != motif]
+    matching_motifs = [x for x in list_motifs if contains_motif(
+        line, x) if x != motif]
     for matched_motif in matching_motifs:
         annotation += dict_mirna_consensus[matched_motif][0]
         annotation += " "
@@ -365,7 +347,8 @@ rule analyze_isomir:
                                        "MATCH"])
                 if len(table_out) > 0:
                     df.sort_values(by="READS", ascending=0, inplace=1)
-
+                else:
+                    continue
                 # calculate total reads
                 total_reads = float(df['READS'].sum())
                 if total_reads == 0:
@@ -376,7 +359,8 @@ rule analyze_isomir:
                 df['RATIO'] = df['READS'].apply(lambda x: round(100*x/total_reads, 2))
                 df2 = pd.DataFrame(freq_nt)
                 df2['MIRNA'] = mirna
-                for base in comparison:
+                base_ord = ord(base)
+                for base in bases:
                     if base not in df2:
                         df2[base] = 0.0
                     else:
@@ -558,62 +542,59 @@ rule group_outputs:
                         cols = cols[-1:] + cols[:-1]
                         df_rest = df_rest[cols]
                         df = df.append(df_rest)
-
                     # add distance metrics to seq_info or expression matrix
                     if config['display_distance_metric'] and (i==1 or i==2):
                         consensus = df["MIRNA"].apply(lambda x: mirna_consensus[x])
                         unique_seqs = set(zip(df["SEQUENCE"], consensus))
                         edit_distances = {}
-
                         # set scores from config
                         delete_costs = np.ones(128, dtype=np.float64)
                         insert_costs = np.ones(128, dtype=np.float64)
                         substitute_costs = np.ones((128, 128), dtype=np.float64)
                         if config['deletion_score']:
-                            delete_costs[ord('A')] = config['deletion_score']
-                            delete_costs[ord('C')] = config['deletion_score']
-                            delete_costs[ord('G')] = config['deletion_score']
-                            delete_costs[ord('T')] = config['deletion_score']
+                            delete_costs[A] = config['deletion_score']
+                            delete_costs[C] = config['deletion_score']
+                            delete_costs[G] = config['deletion_score']
+                            delete_costs[T] = config['deletion_score']
                         if config['insertion_score']:
-                            insert_costs[ord('A')] = config['insertion_score']
-                            insert_costs[ord('C')] = config['insertion_score']
-                            insert_costs[ord('G')] = config['insertion_score']
-                            insert_costs[ord('T')] = config['insertion_score']
+                            insert_costs[A] = config['insertion_score']
+                            insert_costs[C] = config['insertion_score']
+                            insert_costs[G] = config['insertion_score']
+                            insert_costs[T] = config['insertion_score']
                         if config['substitution_AG']:
-                            substitute_costs[ord('A'), ord('G')] = config['substitution_AG']
+                            substitute_costs[A, G] = config['substitution_AG']
                         if config['substitution_GA']:
-                            substitute_costs[ord('G'), ord('A')] = config['substitution_GA']
+                            substitute_costs[G, A] = config['substitution_GA']
                         if config['substitution_CT']:
-                            substitute_costs[ord('C'), ord('T')] = config['substitution_CT']
+                            substitute_costs[C, T] = config['substitution_CT']
                         if config['substitution_TC']:
-                            substitute_costs[ord('T'), ord('C')] = config['substitution_TC']
+                            substitute_costs[T, C] = config['substitution_TC']
                         if config['substitution_AT']:
-                            substitute_costs[ord('A'), ord('T')] = config['substitution_AT']
+                            substitute_costs[A, T] = config['substitution_AT']
                         if config['substitution_TA']:
-                            substitute_costs[ord('T'), ord('A')] = config['substitution_TA']
+                            substitute_costs[T, A] = config['substitution_TA']
                         if config['substitution_AC']:
-                            substitute_costs[ord('A'), ord('C')] = config['substitution_AC']
+                            substitute_costs[A, C] = config['substitution_AC']
                         if config['substitution_CA']:
-                            substitute_costs[ord('C'), ord('A')] = config['substitution_CA']
+                            substitute_costs[C, A] = config['substitution_CA']
                         if config['substitution_GC']:
-                            substitute_costs[ord('G'), ord('C')] = config['substitution_GC']
+                            substitute_costs[G, C] = config['substitution_GC']
                         if config['substitution_CG']:
-                            substitute_costs[ord('C'), ord('G')] = config['substitution_CG']
+                            substitute_costs[C, G] = config['substitution_CG']
                         if config['substitution_GT']:
-                            substitute_costs[ord('G'), ord('T')] = config['substitution_GT']
+                            substitute_costs[G, T] = config['substitution_GT']
                         if config['substitution_TG']:
-                            substitute_costs[ord('T'), ord('G')] = config['substitution_TG']
-                        for base in comparison.keys():
-                            substitute_costs[ord('N'), ord(base)] = 0
-                        for base in ['A', 'C', 'G', 'T']:
-                            substitute_costs[ord(base), ord('N')] = 0
-                        for base in ['A', 'C', 'G', 'T']:
-                            ord_base = ord(base)
-                            for base1 in comparison.keys():
-                                if base1 not in ['A', 'C', 'G', 'T', 'N']:
-                                    substitute_costs[ord_base, ord(base1)] = min(
-                                        [substitute_costs[ord_base, ord(base2)] for base2 in
-                                         comparison[base1]])
+                            substitute_costs[T, G] = config['substitution_TG']
+                        for base_ord in comparison_ord.keys():
+                            substitute_costs[N, base_ord] = 0
+                        for base_ord in {A, C, G, T}:
+                            substitute_costs[base_ord, N] = 0
+                        for base_ord in {A, C, G, T}:
+                            for base1 in comparison_ord.keys():
+                                if base1 not in {A, C, G, T, N}:
+                                    substitute_costs[base_ord, base1] = min(
+                                        [substitute_costs[base_ord, base2] for base2 in
+                                         comparison_ord[base1]])
                         for pair in unique_seqs:
                             edit_distances[pair] = lev(pair[0], pair[1],
                                 delete_costs = delete_costs,
