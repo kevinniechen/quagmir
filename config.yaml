@@ -8,8 +8,8 @@ display_nucleotide_dist: True
 display_group_output: True
 display_distance_metric: True
 
-filter_out_3p: True
-filter_out_5p: True
+filter_out_3p: False
+filter_out_5p: False
 
 # FUNCTION
 destructive_motif_pull: False

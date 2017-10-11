@@ -34,6 +34,8 @@ bases = ["A", "C", "G", "T", "R", "Y", "S", "W", "K", "M", "B", "D", "H", "V",
          "N"]
 base_ords = (A, C, G, T, R, Y, S, W, K, M, B, D, H, V,
          N) = (65, 67, 71, 84, 82, 89, 83, 87, 75, 77, 66, 68, 72, 86, 78)
+base_ords = set(base_ords)
+fastq_ords = {A, C, G, T, N}
 comparison_ord = dict([(A, {A}), (C, {C}), (G, {G}), (T, {T}), (R, {A, G}),
                        (Y, {C, T}), (S, {C, G}), (W, {A, T}), (K, {G, T}),
                        (M, {A, C}), (B, {C, G, T}), (D, {A, G, T}),
@@ -43,6 +45,8 @@ comparison_ord = dict([(A, {A}), (C, {C}), (G, {G}), (T, {T}), (R, {A, G}),
 def compare_chars(fastq, consensus):
     fastq_ord = ord(fastq)
     consensus_ord = ord(consensus)
+    if fastq_ord not in fastq_ords or consensus_ord not in base_ords:
+        return False
     if not (fastq_ord ^ N and consensus_ord ^ N):
         return True
     return fastq_ord in comparison_ord[consensus_ord]
@@ -129,9 +133,7 @@ def get_tailing_seq_5p(seq, tail_len):
 
 def find_in_file(file, string):
     try:
-        with open(file, 'r') as f, \
-            mmap.mmap(f.fileno(), 0,
-                      access=mmap.ACCESS_READ) as s:
+        with open(file, 'r') as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as s:
             if s.find(bytes(string, 'utf-8')) != -1:
                 return True
     except FileNotFoundError:
@@ -481,19 +483,19 @@ rule analyze_isomir:
                     summary_all = summary.copy()
                     first_ds = False
                 else:
-                    summary_all.append(summary)
+                    summary_all = summary_all.append(summary)
 
     # SECTION | DISPLAY SEQUENCES AND SINGLE STATISTICS #######################
                 if first_dsi:
                     sequence_info_all = sequence_info.copy()
                     first_dsi = False
                 else:
-                    sequence_info_all.append(sequence_info)
+                    sequence_info_all = sequence_info_all.append(sequence_info)
                 if first_dnd:
                     nucleotide_dist_all = nucleotide_dist.copy()
                     first_dnd = False
                 else:
-                    nucleotide_dist_all.append(nucleotide_dist)
+                    nucleotide_dist_all = nucleotide_dist_all.append(nucleotide_dist)
 
     # SECTION | CALCULATE CPM AND RPKM OF READS AND OUTPUT RESULTS ############
         if config['display_summary'] and not first_ds:
@@ -599,6 +601,18 @@ rule group_outputs:
                             substitute_costs[G, T] = config['substitution_GT']
                         if config['substitution_TG']:
                             substitute_costs[T, G] = config['substitution_TG']
+                        insert_costs[N] = min([
+                            insert_costs[x] for x in {A, C, G, T}])
+                        delete_costs[N] = min([
+                            delete_costs[x] for x in {A, C, G, T}])
+                        for base_ord in comparison_ord.keys():
+                            if base_ord not in {A, C, G, T}:
+                                insert_costs[base_ord] = min([
+                                    insert_costs[x] for x in comparison_ord[
+                                        base_ord]])
+                                delete_costs[base_ord] = min([
+                                    delete_costs[x] for x in comparison_ord[
+                                        base_ord]])
                         for base_ord in comparison_ord.keys():
                             substitute_costs[N, base_ord] = 0
                             substitute_costs[base_ord, N] = 0
@@ -608,15 +622,8 @@ rule group_outputs:
                                     A, C, G, T} and base_ord1 in {A, C, G, T}):
                                     substitute_costs[base_ord, base_ord1] = min(
                                         [substitute_costs[x, y] for x in
-                                         comparison_ord[base_ord] for y in comparison_ord[base_ord1]])
-                        for base_ord in comparison_ord.keys():
-                            if base_ord not in {A, C, G, T}:
-                                insert_costs[base_ord] = min([
-                                    insert_costs[x] for x in comparison_ord[
-                                        base_ord]])
-                                delete_costs[base_ord] = min([
-                                    delete_costs[x] for x in comparison_ord[
-                                        base_ord]])
+                                         comparison_ord[
+                                             base_ord] for y in comparison_ord[base_ord1]])
                         for pair in unique_seqs:
                             edit_distances[
                                 pair] = lev(str1=pair[0],

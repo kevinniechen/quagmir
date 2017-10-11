@@ -38,7 +38,7 @@ dependencies:
 - paramiko=1.16.0=py35_0
 - pip=8.1.2=py35_0
 - pycrypto=2.6.1=py35_4
-- python=3.5.1=0
+- python=3.6.0=0
 - pytz=2016.4=py35_0
 - pyyaml=3.11=py35_4
 - r::zlib=1.2.8
@@ -61,4 +61,3 @@ dependencies:
   - urllib3==1.12
   - git+https://github.com/infoscout/weighted-levenshtein.git
 prefix: /Users/chenk8/miniconda3/envs/quagmir
-
