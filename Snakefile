@@ -30,12 +30,12 @@ SAMPLES = [os.path.basename(f) for f in glob.glob('data/*')]
 
 ###############################################################################
 
-bases = ["A", "C", "G", "T", "R", "Y", "S", "W", "K", "M", "B", "D", "H", "V",
-         "N"]
 base_ords = (A, C, G, T, R, Y, S, W, K, M, B, D, H, V,
          N) = (65, 67, 71, 84, 82, 89, 83, 87, 75, 77, 66, 68, 72, 86, 78)
 base_ords = set(base_ords)
 fastq_ords = {A, C, G, T, N}
+acgt = ["A", "C", "G", "T"]
+acgt_ords = {A, C, G, T}
 comparison_ord = dict([(A, {A}), (C, {C}), (G, {G}), (T, {T}), (R, {A, G}),
                        (Y, {C, T}), (S, {C, G}), (W, {A, T}), (K, {G, T}),
                        (M, {A, C}), (B, {C, G, T}), (D, {A, G, T}),
@@ -61,12 +61,12 @@ def compare_strings(fastq, consensus):
     return True
 
 
-def startswith_string(str1, str2):
+def starts_with(str1, str2):
     return compare_strings(str1[:len(str2)], str2)
 
 
 def find_in_string(str1, str2):
-    if startswith_string(str1, str2):
+    if starts_with(str1, str2):
         return 0
     if len(str1) > len(str2):
         recursive_find = find_in_string(str1[1:], str2)
@@ -124,13 +124,6 @@ def get_tailing_seq(seq, tail_len):
         return '-'
 
 
-def get_tailing_seq_5p(seq, tail_len):
-    if tail_len is not 0:
-        return seq[:tail_len]
-    else:
-        return '-'
-
-
 def find_in_file(file, string):
     try:
         with open(file, 'r') as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as s:
@@ -169,32 +162,10 @@ def other_motifs_pulled_seq(dict_mirna_consensus, line, motif):
     return annotation
 
 
-def starts_with(line, motif):
-    if len(motif) == 1:
-        return str.startswith(line, motif[0])
-    if not str.startswith(line, motif[0]) or len(motif[0])+motif[1] > len(line):
-        return False
-    return starts_with(line[len(motif[0])+motif[1]:], motif[2:])
-
-
 def contains_motif(line, motif):
     if find_in_string(line, motif) == -1:
         return False
     return True
-
-
-def chunkify_file(infilepath, delim=">"):
-    with open(infilepath) as infile:
-        answer = []
-        tinfile = iter(infile)
-        while 1:
-            try:
-                chunk = [next(tinfile)]
-                chunk.extend(takewhile(lambda line: not line.startswith(delim), tinfile))
-                answer.append(chunk)
-            except StopIteration:
-                break
-    return answer
 
 
 def input_name(prefix, sufix):
@@ -366,15 +337,15 @@ rule analyze_isomir:
                     lambda x: round(100 * x / total_reads, 2))
                 nucleotide_dist = pd.DataFrame(freq_nt)
                 nucleotide_dist['MIRNA'] = mirna
-                for base in bases:
+                for base in acgt:
                     if base not in nucleotide_dist:
-                        nucleotide_dist[base] = 0.0
+                        nucleotide_dist[base] = 0.0000
                     else:
-                        nucleotide_dist[base] = nucleotide_dist[base].fillna(0.0)
+                        nucleotide_dist[base] = nucleotide_dist[base].fillna(0.0000)
                 if "N" not in nucleotide_dist:
-                    nucleotide_dist["N"] = 0.0
+                    nucleotide_dist["N"] = 0.0000
                 else:
-                    nucleotide_dist["N"]=nucleotide_dist["N"].fillna(0.0)
+                    nucleotide_dist["N"]=nucleotide_dist["N"].fillna(0.0000)
                 if len(table_out) > 0:
                     nucleotide_dist['READS'] = nucleotide_dist.sum(axis=1)
                     nucleotide_dist.loc[
@@ -384,9 +355,7 @@ rule analyze_isomir:
                     nucleotide_dist.index.name = 'NT_POSITION'
                     nucleotide_dist.set_index('MIRNA', append=True, inplace=True)
                     nucleotide_dist = nucleotide_dist.swaplevel(0, 1)
-                    nucleotide_dist = nucleotide_dist[["A", "C", "G", "T", "R",
-                                                       "Y", "S", "W", "K", "M",
-                                                       "B", "D", "H", "V", "N",
+                    nucleotide_dist = nucleotide_dist[["A", "C", "G", "T", "N",
                                                        "READS"]]
 
     # SECTION | GENERATE SUMMARY STATISTICS ###################################
@@ -537,16 +506,13 @@ rule group_outputs:
         if config['display_distance_metric']:
             motifs = motif_consensus_to_dict(config['motif_consensus_file'])
             mirna_consensus = {v[0]:v[1] for k, v in motifs.items()}
-
         for i in range(3):
             open(output[i], 'a').close()
-            with open(input[i], 'r') as input_file:
-                first_char = input_file.read(1)
-            if condition[i] and first_char:
+            if condition[i]:
                 with open(output[i], 'a') as out:
-                    df = pd.read_csv(input[i], delimiter="\t", header = 0)
+                    df = pd.read_csv(input[i*len(SAMPLES)], delimiter="\t", header = 0)
                     df['SAMPLE'] = sample_name(
-                        input[i * len(SAMPLES)], prefix, sufix[i])
+                        input[i*len(SAMPLES)], prefix, sufix[i])
                     cols = df.columns.tolist()
                     cols = cols[-1:] + cols[:-1]
                     df = df[cols]
@@ -558,25 +524,21 @@ rule group_outputs:
                         df_rest = df_rest[cols]
                         df = df.append(df_rest)
                     # add distance metrics to seq_info or expression matrix
-                    if config['display_distance_metric'] and (i==1 or i==2):
+                    if config['display_distance_metric'] and i==1:
                         consensus = df["MIRNA"].apply(
                             lambda x: mirna_consensus[x])
                         unique_seqs = set(zip(df["SEQUENCE"], consensus))
                         edit_distances = {}
                         # set scores from config
-                        delete_costs = np.ones(128, dtype=np.float64)
                         insert_costs = np.ones(128, dtype=np.float64)
+                        delete_costs = np.ones(128, dtype=np.float64)
                         substitute_costs = np.ones((128, 128), dtype=np.float64)
-                        if config['deletion_score']:
-                            delete_costs[A] = config['deletion_score']
-                            delete_costs[C] = config['deletion_score']
-                            delete_costs[G] = config['deletion_score']
-                            delete_costs[T] = config['deletion_score']
                         if config['insertion_score']:
-                            insert_costs[A] = config['insertion_score']
-                            insert_costs[C] = config['insertion_score']
-                            insert_costs[G] = config['insertion_score']
-                            insert_costs[T] = config['insertion_score']
+                            for base_ord in base_ords:
+                                insert_costs[base_ord] = config['insertion_score']
+                        if config['deletion_score']:
+                            for base_ord in base_ords:
+                                delete_costs[base_ord] = config['deletion_score']
                         if config['substitution_AG']:
                             substitute_costs[A, G] = config['substitution_AG']
                         if config['substitution_GA']:
@@ -601,25 +563,13 @@ rule group_outputs:
                             substitute_costs[G, T] = config['substitution_GT']
                         if config['substitution_TG']:
                             substitute_costs[T, G] = config['substitution_TG']
-                        insert_costs[N] = min([
-                            insert_costs[x] for x in {A, C, G, T}])
-                        delete_costs[N] = min([
-                            delete_costs[x] for x in {A, C, G, T}])
-                        for base_ord in comparison_ord.keys():
-                            if base_ord not in {A, C, G, T}:
-                                insert_costs[base_ord] = min([
-                                    insert_costs[x] for x in comparison_ord[
-                                        base_ord]])
-                                delete_costs[base_ord] = min([
-                                    delete_costs[x] for x in comparison_ord[
-                                        base_ord]])
                         for base_ord in comparison_ord.keys():
                             substitute_costs[N, base_ord] = 0
                             substitute_costs[base_ord, N] = 0
                         for base_ord in comparison_ord.keys():
                             for base_ord1 in comparison_ord.keys():
                                 if base_ord ^ N and base_ord1 ^ N and not (base_ord in {
-                                    A, C, G, T} and base_ord1 in {A, C, G, T}):
+                                    A, C, G, T} and base_ord1 in acgt_ords):
                                     substitute_costs[base_ord, base_ord1] = min(
                                         [substitute_costs[x, y] for x in
                                          comparison_ord[
