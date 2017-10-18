@@ -36,33 +36,40 @@ base_ords = set(base_ords)
 fastq_ords = {A, C, G, T, N}
 acgt = ["A", "C", "G", "T"]
 acgt_ords = {A, C, G, T}
+fastq_bases = {"A", "C", "G", "T", "N"}
+all_bases = {"A", "C", "G", "T", "N", "R", "Y", "S", "W", "K", "M", "B", "D",
+             "H", "V"}
 comparison_ord = dict([(A, {A}), (C, {C}), (G, {G}), (T, {T}), (R, {A, G}),
                        (Y, {C, T}), (S, {C, G}), (W, {A, T}), (K, {G, T}),
                        (M, {A, C}), (B, {C, G, T}), (D, {A, G, T}),
                        (H, {A, C, T}), (V, {A, C, G})])
+comparison = dict([('A', {'A', 'N'}), ('C', {'C', 'N'}), ('G', {'G', 'N'}),
+                   ('T', {'T', 'N'}), ('R', {'A', 'G', 'N'}),
+                   ('Y', {'C', 'T', 'N'}), ('S', {'C', 'G', 'N'}),
+                   ('W', {'A', 'T', 'N'}), ('K', {'G', 'T', 'N'}),
+                   ('M', {'A', 'C', 'N'}), ('B', {'C', 'G', 'T', 'N'}),
+                   ('D', {'A', 'G', 'T', 'N'}), ('H', {'A', 'C', 'T', 'N'}),
+                   ('V', {'A', 'C', 'G', 'N'}),
+                   ('N', {'A', 'C', 'G', 'T', 'N', 'R', 'Y', 'S', 'W', 'K',
+                          'M', 'B', 'D', 'H', 'V', 'N'})])
 
 
 def compare_chars(fastq, consensus):
-    fastq_ord = ord(fastq)
-    consensus_ord = ord(consensus)
-    if fastq_ord not in fastq_ords or consensus_ord not in base_ords:
-        return False
-    if not (fastq_ord ^ N and consensus_ord ^ N):
-        return True
-    return fastq_ord in comparison_ord[consensus_ord]
+    return fastq in comparison[consensus]
 
 
 def compare_strings(fastq, consensus):
-    if len(fastq) != len(consensus):
+    fastq_len = len(fastq)
+    if fastq_len != len(consensus):
         return False
-    for i in range(len(fastq)):
+    for i in range(fastq_len):
         if not compare_chars(fastq[i], consensus[i]):
             return False
     return True
 
 
 def starts_with(str1, str2):
-    return compare_strings(str1[:len(str2)], str2)
+    return len(str1)>=len(str2) and compare_strings(str1[:len(str2)], str2)
 
 
 def find_in_string(str1, str2):
@@ -76,22 +83,22 @@ def find_in_string(str1, str2):
     return -1
 
 
-def has_substitution_3p(len_trim, seq_end, consensus_end):
-    if len_trim > 3:
-        right = min(len(seq_end), len(consensus_end))
-        left = max(0, len(seq_end) - len_trim + 1)
-        if left < right and compare_strings(seq_end[left:right], consensus_end[
-                                                                 left:right]):
-            return False
-    return True
+def has_substitution_3p(seq_end, consensus_end):
+    len_seq = len(seq_end)
+    len_consensus = len(consensus_end)
+    right = min(len_seq, len_consensus)
+    abs_diff = abs(len_seq - len_consensus)
+    return abs_diff > 3 or not compare_strings(
+        seq_end[:right], consensus_end[:right])
 
 
 def has_substitution_5p(seq_end, consensus_end):
-    for i in range(0, min(len(seq_end), len(consensus_end))):
-        if not compare_chars(seq_end[len(seq_end) - i - 1], consensus_end[len(
-                consensus_end) - i - 1]):
-            return True
-    return False
+    len_seq = len(seq_end)
+    len_consensus = len(consensus_end)
+    min_len = min(len_seq, len_consensus)
+    abs_diff = abs(len_seq - len_consensus)
+    return abs_diff > 3 or not compare_strings(
+        seq_end[len_seq - min_len:], consensus_end[len_consensus - len_consensus:])
 
 
 def calc_trimming(seq_end, consensus_end):
@@ -244,16 +251,11 @@ rule analyze_isomir:
         # SECTION | GENERATE SINGLE STATISTICS ################################
             with open(str(input.collapsed_fasta), "rt") as sample:
                 # calculate total reads
-                pulled_lines = []
                 for line in sample:
-                    reads = line.rpartition(' ')[0]
-                    if contains_motif(line, motif):
-                        pulled_lines.append(line)
-
-                for line in pulled_lines:
-                    num_reads = int(line.rpartition(' ')[0])
                     seq = line.rpartition(' ')[2].rstrip()
-
+                    if not contains_motif(seq, motif):
+                        continue
+                    num_reads = int(line.rpartition(' ')[0])
                     # ascertain sequences pulled in by several miRNA motifs
                     has_other = other_motifs_pulled_seq(
                         dict_mirna_consensus, line, motif)
@@ -292,7 +294,7 @@ rule analyze_isomir:
                         logging.warning(
                         'Skipped (5p substitution) ' + seq + ' ' + mirna)
                     elif config['filter_out_3p'] and has_substitution_3p(
-                            len_trim, seq_end_3p, consensus_end_3p):
+                            seq_end_3p, consensus_end_3p):
                         logging.warning(
                         'Skipped (3p sequencing error) ' + seq + ' ' +
                             str(len_trim) + ' ' + mirna)
