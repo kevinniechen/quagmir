@@ -12,3 +12,5 @@ delete.sh
 playground.py
 .idea/
 data/test.fastq
+compare.py
+copy.sh
