@@ -190,6 +190,53 @@ configfile:
     'config.yaml'
 
 
+#setting edit distance from config file
+insert_costs = np.ones(128, dtype=np.float64)
+delete_costs = np.ones(128, dtype=np.float64)
+substitute_costs = np.ones((128, 128), dtype=np.float64)
+if config['insertion_score']:
+    for base_ord in base_ords:
+        insert_costs[base_ord] = config['insertion_score']
+if config['deletion_score']:
+    for base_ord in base_ords:
+        delete_costs[base_ord] = config['deletion_score']
+if config['substitution_AG']:
+    substitute_costs[A, G] = config['substitution_AG']
+if config['substitution_GA']:
+    substitute_costs[G, A] = config['substitution_GA']
+if config['substitution_CT']:
+    substitute_costs[C, T] = config['substitution_CT']
+if config['substitution_TC']:
+    substitute_costs[T, C] = config['substitution_TC']
+if config['substitution_AT']:
+    substitute_costs[A, T] = config['substitution_AT']
+if config['substitution_TA']:
+    substitute_costs[T, A] = config['substitution_TA']
+if config['substitution_AC']:
+    substitute_costs[A, C] = config['substitution_AC']
+if config['substitution_CA']:
+    substitute_costs[C, A] = config['substitution_CA']
+if config['substitution_GC']:
+    substitute_costs[G, C] = config['substitution_GC']
+if config['substitution_CG']:
+    substitute_costs[C, G] = config['substitution_CG']
+if config['substitution_GT']:
+    substitute_costs[G, T] = config['substitution_GT']
+if config['substitution_TG']:
+    substitute_costs[T, G] = config['substitution_TG']
+for base_ord in comparison_ord.keys():
+    substitute_costs[N, base_ord] = 0
+    substitute_costs[base_ord, N] = 0
+for base_ord in comparison_ord.keys():
+    for base_ord1 in comparison_ord.keys():
+        if base_ord ^ N and base_ord1 ^ N and not (base_ord in {
+            A, C, G, T} and base_ord1 in acgt_ords):
+            substitute_costs[base_ord, base_ord1] = min(
+                [substitute_costs[x, y] for x in
+                 comparison_ord[
+                     base_ord] for y in comparison_ord[base_ord1]])
+
+
 rule all:
     input:
         expand('results/{A}.isomir.tsv', A=SAMPLES),
@@ -284,6 +331,25 @@ rule analyze_isomir:
                     vari_5p = max(len_trim_5p,
                         calc_tailing(
                             seq_end_5p, consensus_end_5p, len_trim_5p))
+
+
+                    # option to check if same sequence mathches multiple mirna
+                    # if destructive pull is TRUE, assign seq to mirna/motif with best distance metric
+                    
+                    # if (config['destructive_motif_pull'] and len(
+                    #         has_other) > 0): #and find_in_file(output[0], seq):
+                    #     dist = lev(seq, consensus)
+                    #     best_matching_mirna = ""
+                    #     for k, v in dict_mirna_consensus.items():
+                    #         if v[0] in has_other.split(" "):
+                    #             if (lev(seq, v[1], delete_costs = delete_costs,
+                    #                 substitute_costs = substitute_costs,
+                    #                 insert_costs = insert_costs) < dist):
+                    #                 best_matching_mirna = v[0]
+                    #     if (len(best_matching_mirna) > 0):
+                    #         logging.warning(
+                    #             'Skipped (' + seq + ') better matches mirna: ' + best_matching_mirna)
+                    #         continue
 
                     # option for not counting same sequence multiple times
                     if config['destructive_motif_pull'] and len(
@@ -531,51 +597,6 @@ rule group_outputs:
                             lambda x: mirna_consensus[x])
                         unique_seqs = set(zip(df["SEQUENCE"], consensus))
                         edit_distances = {}
-                        # set scores from config
-                        insert_costs = np.ones(128, dtype=np.float64)
-                        delete_costs = np.ones(128, dtype=np.float64)
-                        substitute_costs = np.ones((128, 128), dtype=np.float64)
-                        if config['insertion_score']:
-                            for base_ord in base_ords:
-                                insert_costs[base_ord] = config['insertion_score']
-                        if config['deletion_score']:
-                            for base_ord in base_ords:
-                                delete_costs[base_ord] = config['deletion_score']
-                        if config['substitution_AG']:
-                            substitute_costs[A, G] = config['substitution_AG']
-                        if config['substitution_GA']:
-                            substitute_costs[G, A] = config['substitution_GA']
-                        if config['substitution_CT']:
-                            substitute_costs[C, T] = config['substitution_CT']
-                        if config['substitution_TC']:
-                            substitute_costs[T, C] = config['substitution_TC']
-                        if config['substitution_AT']:
-                            substitute_costs[A, T] = config['substitution_AT']
-                        if config['substitution_TA']:
-                            substitute_costs[T, A] = config['substitution_TA']
-                        if config['substitution_AC']:
-                            substitute_costs[A, C] = config['substitution_AC']
-                        if config['substitution_CA']:
-                            substitute_costs[C, A] = config['substitution_CA']
-                        if config['substitution_GC']:
-                            substitute_costs[G, C] = config['substitution_GC']
-                        if config['substitution_CG']:
-                            substitute_costs[C, G] = config['substitution_CG']
-                        if config['substitution_GT']:
-                            substitute_costs[G, T] = config['substitution_GT']
-                        if config['substitution_TG']:
-                            substitute_costs[T, G] = config['substitution_TG']
-                        for base_ord in comparison_ord.keys():
-                            substitute_costs[N, base_ord] = 0
-                            substitute_costs[base_ord, N] = 0
-                        for base_ord in comparison_ord.keys():
-                            for base_ord1 in comparison_ord.keys():
-                                if base_ord ^ N and base_ord1 ^ N and not (base_ord in {
-                                    A, C, G, T} and base_ord1 in acgt_ords):
-                                    substitute_costs[base_ord, base_ord1] = min(
-                                        [substitute_costs[x, y] for x in
-                                         comparison_ord[
-                                             base_ord] for y in comparison_ord[base_ord1]])
                         for pair in unique_seqs:
                             edit_distances[
                                 pair] = lev(str1=pair[0],
