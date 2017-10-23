@@ -147,10 +147,9 @@ def motif_consensus_to_dict(file):
     return ordered_dict
 
 
-def other_motifs_pulled_seq(dict_mirna_consensus, line, motif):
+def other_motifs_pulled_seq(dict_mirna_consensus, line, motif, motif_list):
     annotation = ""
-    list_motifs = list(dict_mirna_consensus.keys())
-    matching_motifs = [x for x in list_motifs if contains_motif(
+    matching_motifs = [x for x in motif_list if contains_motif(
         line, x) if x != motif]
     for matched_motif in matching_motifs:
         annotation += dict_mirna_consensus[matched_motif][0]
@@ -268,6 +267,7 @@ rule analyze_isomir:
         logging.debug("Start sample: " + input.collapsed_fasta)
         # SECTION | SETUP #####################################################
         dict_mirna_consensus = motif_consensus_to_dict(input.motif_consensus)
+        motif_list = list(dict_mirna_consensus.keys())
         total_reads_in_sample = sum(1 for line in open(input.input_files)) / 4
         first_ds = True
         first_dsi = True
@@ -294,7 +294,7 @@ rule analyze_isomir:
                     num_reads = int(line.rpartition(' ')[0])
                     # ascertain sequences pulled in by several miRNA motifs
                     has_other = other_motifs_pulled_seq(
-                        dict_mirna_consensus, line, motif)
+                        dict_mirna_consensus, line, motif, motif_list)
 
                     # sequence manipulations
                     consensus_index_3p = find_in_string(
