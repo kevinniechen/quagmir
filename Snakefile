@@ -131,17 +131,6 @@ def get_tailing_seq(seq, tail_len):
         return '-'
 
 
-def find_in_file(file, string):
-    try:
-        with open(file, 'r') as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as s:
-            if s.find(bytes(string, 'utf-8')) != -1:
-                return True
-    except FileNotFoundError:
-        return False
-    else:
-        return False
-
-
 def motif_consensus_to_dict(file):
     ordered_dict = co.OrderedDict()
     handle = open(file)
@@ -332,29 +321,22 @@ rule analyze_isomir:
                         calc_tailing(
                             seq_end_5p, consensus_end_5p, len_trim_5p))
 
-
                     # option to check if same sequence mathches multiple mirna
-                    # if destructive pull is TRUE, assign seq to mirna/motif with best distance metric
-                    
-                    # if (config['destructive_motif_pull'] and len(
-                    #         has_other) > 0): #and find_in_file(output[0], seq):
-                    #     dist = lev(seq, consensus)
-                    #     best_matching_mirna = ""
-                    #     for k, v in dict_mirna_consensus.items():
-                    #         if v[0] in has_other.split(" "):
-                    #             if (lev(seq, v[1], delete_costs = delete_costs,
-                    #                 substitute_costs = substitute_costs,
-                    #                 insert_costs = insert_costs) < dist):
-                    #                 best_matching_mirna = v[0]
-                    #     if (len(best_matching_mirna) > 0):
-                    #         logging.warning(
-                    #             'Skipped (' + seq + ') better matches mirna: ' + best_matching_mirna)
-                    #         continue
-
-                    # option for not counting same sequence multiple times
-                    if config['destructive_motif_pull'] and len(
-                            has_other) > 0 and find_in_file(output[0], seq):
-                        logging.warning('Skipped ' + seq + ' ' + mirna)
+                    # if destructive pull is TRUE, assign seq to mirna/motif
+                    # with best distance metric
+                    if (config['destructive_motif_pull'] and len(has_other) > 0):
+                        dist = lev(seq, consensus)
+                        best_matching_mirna = ""
+                        for k, v in dict_mirna_consensus.items():
+                            if v[0] in has_other.split(" "):
+                                if (lev(seq, v[1], delete_costs = delete_costs,
+                                    substitute_costs = substitute_costs,
+                                    insert_costs = insert_costs) < dist):
+                                    best_matching_mirna = v[0]
+                        if (len(best_matching_mirna) > 0):
+                            logging.warning(
+                                'Skipped (' + seq + ') better matches mirna: ' +
+                                best_matching_mirna)
                     elif config['filter_out_5p'] and has_substitution_5p(
                             seq_end_5p, consensus_end_5p):
                         logging.warning(
