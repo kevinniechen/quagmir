@@ -11,6 +11,10 @@ display_distance_metric: True
 filter_out_3p: True
 filter_out_5p: True
 
+edit_distance_3p: 3
+edit_distance_5p: 2
+
+ambiguous_letters: False
 # FUNCTION
 destructive_motif_pull: False
 

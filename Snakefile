@@ -157,12 +157,6 @@ def other_motifs_pulled_seq(dict_mirna_consensus, line, motif, motif_list):
     return annotation
 
 
-def contains_motif(line, motif):
-    if find_in_string(line, motif) == -1:
-        return False
-    return True
-
-
 def input_name(prefix, sufix):
     answer = []
     for sample in SAMPLES:
@@ -176,6 +170,26 @@ def sample_name(input, prefix, sufix):
 
 configfile:
     'config.yaml'
+
+if config['ambiguous_letters']:
+    def find_in_string(str1, str2):
+        if starts_with(str1, str2):
+            return 0
+        if len(str1) > len(str2):
+            recursive_find = find_in_string(str1[1:], str2)
+            if recursive_find == -1:
+                return -1
+            return recursive_find + 1
+        return -1
+else:
+    def find_in_string(str1, str2):
+        return str1.find(str2)
+
+
+def contains_motif(line, motif):
+    if find_in_string(line, motif) == -1:
+        return False
+    return True
 
 
 #setting edit distance from config file
