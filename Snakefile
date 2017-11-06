@@ -7,20 +7,14 @@ Aim: Python-based isomiR quantification and analysis pipeline.
 Run: snakemake
 """
 
+
 import glob
-import csv
 import collections as co
 import numpy as np
 import pandas as pd
-import difflib
-import mmap
 import time
 import logging
 from weighted_levenshtein import lev
-from os.path import join
-from os.path import splitext
-from itertools import takewhile
-from decimal import *
 from Bio import SeqIO
 
 ###############################################################################
@@ -81,24 +75,6 @@ def find_in_string(str1, str2):
             return -1
         return recursive_find + 1
     return -1
-
-
-def has_substitution_3p(seq_end, consensus_end):
-    len_seq = len(seq_end)
-    len_consensus = len(consensus_end)
-    right = min(len_seq, len_consensus)
-    abs_diff = abs(len_seq - len_consensus)
-    return abs_diff > 3 or not compare_strings(
-        seq_end[:right], consensus_end[:right])
-
-
-def has_substitution_5p(seq_end, consensus_end):
-    len_seq = len(seq_end)
-    len_consensus = len(consensus_end)
-    min_len = min(len_seq, len_consensus)
-    abs_diff = abs(len_seq - len_consensus)
-    return abs_diff > 3 or not compare_strings(
-        seq_end[len_seq - min_len:], consensus_end[len_consensus - len_consensus:])
 
 
 def calc_trimming(seq_end, consensus_end):
@@ -335,6 +311,9 @@ rule analyze_isomir:
                         calc_tailing(
                             seq_end_5p, consensus_end_5p, len_trim_5p))
 
+                    lev_3p = lev(seq_end_3p, consensus_end_3p)
+                    lev_5p = lev(seq_end_5p, consensus_end_5p)
+                    lev_total = lev_3p + lev_5p
                     # option to check if same sequence mathches multiple mirna
                     # if destructive pull is TRUE, assign seq to mirna/motif
                     # with best distance metric
@@ -351,12 +330,10 @@ rule analyze_isomir:
                             logging.warning(
                                 'Skipped (' + seq + ') better matches mirna: ' +
                                 best_matching_mirna)
-                    elif config['filter_out_5p'] and has_substitution_5p(
-                            seq_end_5p, consensus_end_5p):
+                    elif config['filter_out_5p'] and lev_5p > config['edit_distance_5p']:
                         logging.warning(
                         'Skipped (5p substitution) ' + seq + ' ' + mirna)
-                    elif config['filter_out_3p'] and has_substitution_3p(
-                            seq_end_3p, consensus_end_3p):
+                    elif config['filter_out_3p'] and lev_3p > config['edit_distance_3p']:
                         logging.warning(
                         'Skipped (3p sequencing error) ' + seq + ' ' +
                             str(len_trim) + ' ' + mirna)
@@ -372,20 +349,21 @@ rule analyze_isomir:
                         # add to display queue
                         table_out.append([mirna, seq, len_read, num_reads,
                                 ratio, len_trim, len_tail, seq_tail,
-                                vari_5p, has_other])
+                                vari_5p, has_other, lev_total])
 
     # SECTION | MOVE STATISTICS INTO DATAFRAME ################################
                 sequence_info = pd.DataFrame(table_out,
                                              columns=["MIRNA",
-                                       "SEQUENCE",
-                                       "LEN_READ",
-                                       "READS",
-                                       "RATIO",
-                                       "LEN_TRIM",
-                                       "LEN_TAIL",
-                                       "SEQ_TAIL",
-                                       "VAR_5P",
-                                       "MATCH"])
+                                                      "SEQUENCE",
+                                                      "LEN_READ",
+                                                      "READS",
+                                                      "RATIO",
+                                                      "LEN_TRIM",
+                                                      "LEN_TAIL",
+                                                      "SEQ_TAIL",
+                                                      "VAR_5P",
+                                                      "MATCH",
+                                                      "DISTANCE"])
                 if len(table_out) > 0:
                     sequence_info.sort_values(by="READS", ascending=0, inplace=1)
                 else:
@@ -499,19 +477,19 @@ rule analyze_isomir:
                                        columns = ["MIRNA",
                                               "MOTIF",
                                               "CONSENSUS",
-                                              "TOTAL READS",
-                                              "TOTAL ISOMIRS",
-                                              "FIDELITY 5P",
-                                              "A TAILING",
-                                              "C TAILING",
-                                              "G TAILING",
-                                              "T TAILING",
-                                              "SEQUENCE TRIMMING ONLY",
-                                              "SEQUENCE TRIMMING",
-                                              "SEQUENCE TAILING ONLY",
-                                              "SEQUENCE TAILING",
-                                              "SEQUENCE TRIMMING AND TAILING",
-                                              "TOTAL READS IN SAMPLE"])
+                                              "TOTAL_READS",
+                                              "TOTAL_ISOMIRS",
+                                              "FIDELITY_5P",
+                                              "A_TAILING",
+                                              "C_TAILING",
+                                              "G_TAILING",
+                                              "T_TAILING",
+                                              "SEQUENCE_TRIMMING_ONLY",
+                                              "SEQUENCE_TRIMMING",
+                                              "SEQUENCE_TAILING_ONLY",
+                                              "SEQUENCE_TAILING",
+                                              "SEQUENCE_TRIMMING_AND_TAILING",
+                                              "TOTAL_READS_IN_SAMPLE"])
                 if first_ds:
                     summary_all = summary.copy()
                     first_ds = False
@@ -566,10 +544,7 @@ rule group_outputs:
         condition = [config['display_group_output'] and config['display_summary'],
                      config['display_group_output'] and config['display_sequence_info'],
                      config['display_group_output'] and config['display_nucleotide_dist']]
-
-        if config['display_distance_metric']:
-            motifs = motif_consensus_to_dict(config['motif_consensus_file'])
-            mirna_consensus = {v[0]:v[1] for k, v in motifs.items()}
+        
         for i in range(3):
             open(output[i], 'a').close()
             if condition[i]:
@@ -587,20 +562,4 @@ rule group_outputs:
                         cols = cols[-1:] + cols[:-1]
                         df_rest = df_rest[cols]
                         df = df.append(df_rest)
-                    # add distance metrics to seq_info or expression matrix
-                    if config['display_distance_metric'] and i==1:
-                        consensus = df["MIRNA"].apply(
-                            lambda x: mirna_consensus[x])
-                        unique_seqs = set(zip(df["SEQUENCE"], consensus))
-                        edit_distances = {}
-                        for pair in unique_seqs:
-                            edit_distances[
-                                pair] = lev(str1=pair[0],
-                                            str2=pair[1],
-                                            insert_costs=insert_costs,
-                                            delete_costs=delete_costs,
-                                            substitute_costs=substitute_costs)
-                        df['DISTANCE'] = df[[
-                            'SEQUENCE', 'MIRNA']].apply(lambda row: edit_distances[(
-                            row[0], mirna_consensus[row[1]])],axis=1)
                     df.to_csv(out, sep='\t', index=False, header=True)
