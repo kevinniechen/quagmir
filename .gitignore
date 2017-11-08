@@ -6,3 +6,11 @@ data/collapsed
 data/realcase*
 collapsed/
 group_results/
+playground.py
+motif-concensus.fa
+delete.sh
+playground.py
+.idea/
+data/test.fastq
+compare.py
+copy.sh

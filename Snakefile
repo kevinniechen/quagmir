@@ -7,20 +7,14 @@ Aim: Python-based isomiR quantification and analysis pipeline.
 Run: snakemake
 """
 
+
 import glob
-import csv
 import collections as co
 import numpy as np
 import pandas as pd
-import difflib
-import mmap
 import time
 import logging
 from weighted_levenshtein import lev
-from os.path import join
-from os.path import splitext
-from itertools import takewhile
-from decimal import *
 from Bio import SeqIO
 
 ###############################################################################
@@ -30,41 +24,81 @@ SAMPLES = [os.path.basename(f) for f in glob.glob('data/*')]
 
 ###############################################################################
 
-def has_substitution_3p(len_trim, seq_end, consensus_end):
-    if len_trim > 3:
-        right = min(len(seq_end), len(consensus_end))
-        left = max(0, len(seq_end) - len_trim + 1)
-        if left < right and all(seq_end[i] == consensus_end[i] or consensus_end[i] == 'N' for i in range(left, right)):
-            return True
-    return False
+base_ords = (A, C, G, T, R, Y, S, W, K, M, B, D, H, V,
+         N) = (65, 67, 71, 84, 82, 89, 83, 87, 75, 77, 66, 68, 72, 86, 78)
+base_ords = set(base_ords)
+fastq_ords = {A, C, G, T, N}
+acgt = ["A", "C", "G", "T"]
+acgt_ords = {A, C, G, T}
+fastq_bases = {"A", "C", "G", "T", "N"}
+all_bases = {"A", "C", "G", "T", "N", "R", "Y", "S", "W", "K", "M", "B", "D",
+             "H", "V"}
+comparison_ord = dict([(A, {A}), (C, {C}), (G, {G}), (T, {T}), (R, {A, G}),
+                       (Y, {C, T}), (S, {C, G}), (W, {A, T}), (K, {G, T}),
+                       (M, {A, C}), (B, {C, G, T}), (D, {A, G, T}),
+                       (H, {A, C, T}), (V, {A, C, G})])
+comparison = dict([('A', {'A', 'N'}), ('C', {'C', 'N'}), ('G', {'G', 'N'}),
+                   ('T', {'T', 'N'}), ('R', {'A', 'G', 'N'}),
+                   ('Y', {'C', 'T', 'N'}), ('S', {'C', 'G', 'N'}),
+                   ('W', {'A', 'T', 'N'}), ('K', {'G', 'T', 'N'}),
+                   ('M', {'A', 'C', 'N'}), ('B', {'C', 'G', 'T', 'N'}),
+                   ('D', {'A', 'G', 'T', 'N'}), ('H', {'A', 'C', 'T', 'N'}),
+                   ('V', {'A', 'C', 'G', 'N'}),
+                   ('N', {'A', 'C', 'G', 'T', 'N', 'R', 'Y', 'S', 'W', 'K',
+                          'M', 'B', 'D', 'H', 'V', 'N'})])
 
-def has_substitution_5p(seq_end, consensus_end):
-    for i in range(0, min(len(seq_end), len(consensus_end))):
-        if (seq_end[len(seq_end) - i - 1] !=
-            consensus_end[len(consensus_end) - i - 1]) and consensus_end[len(consensus_end) - i - 1] != 'N':
-            return True
-    return False
+
+def compare_chars(fastq, consensus):
+    return fastq in comparison[consensus]
+
+
+def compare_strings(fastq, consensus):
+    fastq_len = len(fastq)
+    if fastq_len != len(consensus):
+        return False
+    for i in range(fastq_len):
+        if not compare_chars(fastq[i], consensus[i]):
+            return False
+    return True
+
+
+def starts_with(str1, str2):
+    return len(str1)>=len(str2) and compare_strings(str1[:len(str2)], str2)
+
+
+def find_in_string(str1, str2):
+    if starts_with(str1, str2):
+        return 0
+    if len(str1) > len(str2):
+        recursive_find = find_in_string(str1[1:], str2)
+        if recursive_find == -1:
+            return -1
+        return recursive_find + 1
+    return -1
+
 
 def calc_trimming(seq_end, consensus_end):
     for i in range(0, min(len(seq_end), len(consensus_end))):
-        if seq_end[i] != consensus_end[i] and consensus_end[i] != 'N':
-            return (len(consensus_end) - i)
+        if not compare_chars(seq_end[i], consensus_end[i]):
+            return len(consensus_end) - i
     if len(seq_end) < len(consensus_end):
         return len(consensus_end) - len(seq_end)
     return 0
+
 
 def calc_trimming_5p(seq_end, consensus_end):
     for i in range(0, min(len(seq_end), len(consensus_end))):
-        if seq_end[len(seq_end) - i - 1] != consensus_end[len(
-                consensus_end) - i - 1] and consensus_end[len(
-                consensus_end) - i - 1] != 'N':
-            return (len(consensus_end) - i)
+        if not compare_chars(seq_end[len(seq_end) - i - 1], consensus_end[len(
+                consensus_end) - i - 1]):
+            return len(consensus_end) - i
     if len(seq_end) < len(consensus_end):
         return len(consensus_end) - len(seq_end)
     return 0
 
+
 def calc_tailing(seq_end, consensus_end, trim_len):
-    return (len(seq_end) - len(consensus_end) + trim_len)
+    return len(seq_end) - len(consensus_end) + trim_len
+
 
 def get_tailing_seq(seq, tail_len):
     if tail_len is not 0:
@@ -72,23 +106,6 @@ def get_tailing_seq(seq, tail_len):
     else:
         return '-'
 
-def get_tailing_seq_5p(seq, tail_len):
-    if tail_len is not 0:
-        return seq[:tail_len]
-    else:
-        return '-'
-
-def find_in_file(file, string):
-    try:
-        with open(file, 'r') as f, \
-            mmap.mmap(f.fileno(), 0,
-                      access=mmap.ACCESS_READ) as s:
-            if s.find(bytes(string, 'utf-8')) != -1:
-                return True
-    except FileNotFoundError:
-        return False
-    else:
-        return False
 
 def motif_consensus_to_dict(file):
     ordered_dict = co.OrderedDict()
@@ -99,99 +116,171 @@ def motif_consensus_to_dict(file):
         motif = seq_record.description.split()[1]
         consensus = str(seq_record.seq)
         if motif in ordered_dict:
-            logging.info('Motif ' + motif + ' encountered more than once in ' + file + ': only first occurrence is kept')
+            logging.info('Motif ' + motif + ' encountered more than once in ' +
+                         file + ': only first occurrence is kept')
             continue
-            raise Exception("\n************************************\n" +
-                "DUPLICATE MOTIFS FOUND IN '" + file + "'\n" +
-                "FIRST INSTANCE: " + motif + "\n" +
-                "PLEASE CHECK YOUR MOTIF CONSENSUS FILE\n" +
-                "AND FIX OR DELETE BEFORE RERUNNING\n" +
-                "************************************\n")
         ordered_dict[motif] = [mirna, consensus]
     return ordered_dict
 
-def other_motifs_pulled_seq(dict_mirna_consensus, line, motif):
+
+def other_motifs_pulled_seq(dict_mirna_consensus, line, motif, motif_list):
     annotation = ""
-    list_motifs = list(dict_mirna_consensus.keys())
-    matching_motifs = [
-        x for x in list_motifs if contains_motif(line, chop_motif(x)) if x != motif]
+    matching_motifs = [x for x in motif_list if contains_motif(
+        line, x) if x != motif]
     for matched_motif in matching_motifs:
         annotation += dict_mirna_consensus[matched_motif][0]
         annotation += " "
     return annotation
 
-def chop_motif(motif):
-    n_pos = str.find(motif, 'N')
-    if n_pos==-1:
-        return([motif])
-    n_num = 0
-    i = n_pos
-    while i<len(motif) and motif[i]=='N':
-        i+=1
-        n_num+=1
-    return([motif[:n_pos], n_num] + chop_motif(motif[n_pos+n_num:]))
-
-def starts_with(line, motif):
-    if len(motif) == 1:
-        return(str.startswith(line, motif[0]))
-    if not str.startswith(line, motif[0]) or len(motif[0])+motif[1] > len(line):
-        return(False)
-    return(starts_with(line[len(motif[0])+motif[1]:], motif[2:]))
-
-def find_motif(line, motif):
-    if len(motif) == 1:
-        return(str.find(line, motif[0]))
-    motif_pos = str.find(line, motif[0])
-    if motif_pos == -1 or motif_pos + len(motif[0]) + motif[1] > len(line):
-        return(-1)
-    if starts_with(line[motif_pos + len(motif[0]) + motif[1]:], motif[2:]):
-        return(motif_pos)
-    subline_pos = find_motif(line[motif_pos+1:], motif)
-    if subline_pos == -1:
-        return(-1)
-    return(motif_pos + 1 + subline_pos)
-    
-def contains_motif(line, motif):
-    if find_motif(line, motif) == -1:
-        return(False)
-    return(True)
-
-def chunkify_file(infilepath, delim=">"):
-    with open(infilepath) as infile:
-        answer = []
-        tinfile = iter(infile)
-        while 1:
-            try:
-                chunk = [next(tinfile)]
-                chunk.extend(takewhile(lambda line: not line.startswith(">"), tinfile))
-                answer.append(chunk)
-            except StopIteration:
-                break
-    return answer    
 
 def input_name(prefix, sufix):
     answer = []
     for sample in SAMPLES:
         answer.append(prefix + sample + sufix)
-    return(answer)
+    return answer
+
 
 def sample_name(input, prefix, sufix):
-    return(input[len(prefix):-len(sufix)])
-
+    return input[len(prefix):-len(sufix)]
 
 
 configfile:
     'config.yaml'
 
+if config['ambiguous_letters']:
+    def find_in_string(str1, str2):
+        if starts_with(str1, str2):
+            return 0
+        if len(str1) > len(str2):
+            recursive_find = find_in_string(str1[1:], str2)
+            if recursive_find == -1:
+                return -1
+            return recursive_find + 1
+        return -1
+else:
+    def find_in_string(str1, str2):
+        return str1.find(str2)
+
+
+def contains_motif(line, motif):
+    if find_in_string(line, motif) == -1:
+        return False
+    return True
+
+if config['edit_distance_3p'] == -1:
+    if config['edit_distance_5p'] == -1:
+        def calc_edit_distance(seq_3p, seq_5p, consensus_3p, consensus_5p,
+                               delete_costs, substitute_costs, insert_costs):
+            lev_3p = lev(str1=seq_3p, str2=consensus_3p,
+                         delete_costs=delete_costs,
+                         substitute_costs=substitute_costs,
+                         insert_costs=insert_costs)
+            lev_5p = lev(str1=seq_5p, str2=consensus_5p,
+                         delete_costs=delete_costs,
+                         substitute_costs=substitute_costs,
+                         insert_costs=insert_costs)
+            return lev_3p + lev_5p
+    else:
+        def calc_edit_distance(seq_3p, seq_5p, consensus_3p, consensus_5p,
+                               delete_costs, substitute_costs, insert_costs):
+            lev_5p = lev(str1=seq_5p, str2=consensus_5p,
+                         delete_costs=delete_costs,
+                         substitute_costs=substitute_costs,
+                         insert_costs=insert_costs)
+            if lev_5p > config['edit_distance_5p']:
+                return -5
+            lev_3p = lev(str1=seq_3p, str2=consensus_3p,
+                         delete_costs=delete_costs,
+                         substitute_costs=substitute_costs,
+                         insert_costs=insert_costs)
+            return lev_3p + lev_5p
+else:
+    if config['edit_distance_5p'] == -1:
+        def calc_edit_distance(seq_3p, seq_5p, consensus_3p, consensus_5p,
+                               delete_costs, substitute_costs, insert_costs):
+            lev_3p = lev(str1=seq_3p, str2=consensus_3p,
+                         delete_costs=delete_costs,
+                         substitute_costs=substitute_costs,
+                         insert_costs=insert_costs)
+            if lev_3p > config['edit_distance_3p']:
+                return -3
+            lev_5p = lev(str1=seq_5p, str2=consensus_5p,
+                         delete_costs=delete_costs,
+                         substitute_costs=substitute_costs,
+                         insert_costs=insert_costs)
+            return lev_3p + lev_5p
+    else:
+        def calc_edit_distance(seq_3p, seq_5p, consensus_3p, consensus_5p,
+                               delete_costs, substitute_costs, insert_costs):
+            lev_3p = lev(str1=seq_3p, str2=consensus_3p,
+                         delete_costs=delete_costs,
+                         substitute_costs=substitute_costs,
+                         insert_costs=insert_costs)
+            if lev_3p > config['edit_distance_3p']:
+                return -3
+            lev_5p = lev(str1=seq_5p, str2=consensus_5p,
+                         delete_costs=delete_costs,
+                         substitute_costs=substitute_costs,
+                         insert_costs=insert_costs)
+            if lev_5p > config['edit_distance_5p']:
+                return -5
+            return lev_3p + lev_5p
+
+#setting edit distance from config file
+insert_costs = np.ones(128, dtype=np.float64)
+delete_costs = np.ones(128, dtype=np.float64)
+substitute_costs = np.ones((128, 128), dtype=np.float64)
+if config['insertion_score']:
+    for base_ord in base_ords:
+        insert_costs[base_ord] = config['insertion_score']
+if config['deletion_score']:
+    for base_ord in base_ords:
+        delete_costs[base_ord] = config['deletion_score']
+if config['substitution_AG']:
+    substitute_costs[A, G] = config['substitution_AG']
+if config['substitution_GA']:
+    substitute_costs[G, A] = config['substitution_GA']
+if config['substitution_CT']:
+    substitute_costs[C, T] = config['substitution_CT']
+if config['substitution_TC']:
+    substitute_costs[T, C] = config['substitution_TC']
+if config['substitution_AT']:
+    substitute_costs[A, T] = config['substitution_AT']
+if config['substitution_TA']:
+    substitute_costs[T, A] = config['substitution_TA']
+if config['substitution_AC']:
+    substitute_costs[A, C] = config['substitution_AC']
+if config['substitution_CA']:
+    substitute_costs[C, A] = config['substitution_CA']
+if config['substitution_GC']:
+    substitute_costs[G, C] = config['substitution_GC']
+if config['substitution_CG']:
+    substitute_costs[C, G] = config['substitution_CG']
+if config['substitution_GT']:
+    substitute_costs[G, T] = config['substitution_GT']
+if config['substitution_TG']:
+    substitute_costs[T, G] = config['substitution_TG']
+for base_ord in comparison_ord.keys():
+    substitute_costs[N, base_ord] = 0
+    substitute_costs[base_ord, N] = 0
+for base_ord in comparison_ord.keys():
+    for base_ord1 in comparison_ord.keys():
+        if base_ord ^ N and base_ord1 ^ N and not (base_ord in {
+            A, C, G, T} and base_ord1 in acgt_ords):
+            substitute_costs[base_ord, base_ord1] = min(
+                [substitute_costs[x, y] for x in
+                 comparison_ord[
+                     base_ord] for y in comparison_ord[base_ord1]])
+
+
 rule all:
     input:
         expand('results/{A}.isomir.tsv', A=SAMPLES),
         expand('results/{A}.isomir.sequence_info.tsv', A=SAMPLES),
-        expand('results/{A}.isomir.expression.tsv', A=SAMPLES),
         expand('group_results/' + config['group_output_name'] + '.isomir.tsv'),
         expand('group_results/' + config['group_output_name'] + '.isomir.sequence_info.tsv'),
-        expand('group_results/' + config['group_output_name'] + '.isomir.expression.tsv'),
         expand('group_results/' + config['group_output_name'] + '.isomir.nucleotide_dist.tsv')
+
 
 rule collapse_fastq:
     input:
@@ -201,11 +290,12 @@ rule collapse_fastq:
     shell:
         'awk "NR%4==2" {input} | sort -S1900G | uniq -c > {output}'
 
+
 rule analyze_isomir:
     input:
-        motif_consensus = config['motif_consensus_file'],
-        collapsed_fasta = 'collapsed/{A}.collapsed',
-        input_files = 'data/{A}'
+        collapsed_fasta='collapsed/{A}.collapsed',
+        input_files='data/{A}',
+        motif_consensus=config['motif_consensus_file']
     output:
         'results/{A}.isomir.tsv',
         'results/{A}.isomir.sequence_info.tsv',
@@ -223,23 +313,19 @@ rule analyze_isomir:
                 logging.info(str(key) + ':\t' + str(val))
             config_logged = True
         logging.debug("Start sample: " + input.collapsed_fasta)
-
-        # SECTION | SETUP MIRNA CONSENSUS DICT #####################################
+        # SECTION | SETUP #####################################################
         dict_mirna_consensus = motif_consensus_to_dict(input.motif_consensus)
-
-        # with open(str(input.motif_txt), 'rt') as txt:
-        #     total_reads_in_sample = txt.readline().split(": ")[1]
-        #     total_mapped_reads = 0
-        #     for ln in txt:
-        #         if ln.startswith("total-reads"):
-        #             total_mapped_reads += int(ln.split("\t")[1])
-
-        # SECTION | MIRNA LOOP ################################################
+        motif_list = list(dict_mirna_consensus.keys())
+        total_reads_in_sample = sum(1 for line in open(input.input_files)) / 4
         first_ds = True
         first_dsi = True
         first_dnd = True
+        open(output[0], 'a').close()
+        open(output[1], 'a').close()
+        open(output[2], 'a').close()
+
+        # SECTION | MIRNA LOOP ################################################
         for motif, value in dict_mirna_consensus.items():
-            motif_choped = chop_motif(motif)
             mirna = value[0]
             consensus = value[1]
             table_out = []
@@ -249,28 +335,23 @@ rule analyze_isomir:
         # SECTION | GENERATE SINGLE STATISTICS ################################
             with open(str(input.collapsed_fasta), "rt") as sample:
                 # calculate total reads
-                pulled_lines = []
                 for line in sample:
-                    reads = line.rpartition(' ')[0]
-                    if contains_motif(line, motif_choped):
-                        pulled_lines.append(line)
-
-                for line in pulled_lines:
-                    num_reads = int(line.rpartition(' ')[0])
                     seq = line.rpartition(' ')[2].rstrip()
-
+                    if not contains_motif(seq, motif):
+                        continue
+                    num_reads = int(line.rpartition(' ')[0])
                     # ascertain sequences pulled in by several miRNA motifs
                     has_other = other_motifs_pulled_seq(
-                        dict_mirna_consensus, line, motif)
+                        dict_mirna_consensus, line, motif, motif_list)
 
                     # sequence manipulations
-                    consensus_index_3p = find_motif(
-                        consensus, motif_choped) + len(motif)
-                    seq_index_3p = find_motif(seq, motif_choped) + len(motif)
+                    consensus_index_3p = find_in_string(
+                        consensus, motif) + len(motif)
+                    seq_index_3p = find_in_string(seq, motif) + len(motif)
                     consensus_end_3p = consensus[consensus_index_3p:]
                     seq_end_3p = seq[seq_index_3p:]
-                    consensus_index_5p = find_motif(consensus, motif_choped)
-                    seq_index_5p = find_motif(seq, motif_choped)
+                    consensus_index_5p = find_in_string(consensus, motif)
+                    seq_index_5p = find_in_string(seq, motif)
                     consensus_end_5p = consensus[:consensus_index_5p]
                     seq_end_5p = seq[:seq_index_5p]
 
@@ -288,84 +369,108 @@ rule analyze_isomir:
                         calc_tailing(
                             seq_end_5p, consensus_end_5p, len_trim_5p))
 
-                    # option for not counting same sequence multiple times
-                    if (config['destructive_motif_pull'] and
-                       len(has_other) > 0 and  # seq maps to multiple miR
-                       find_in_file(output[0], seq)):  # check prev
-                           logging.warning(
-                           'Skipped ' + seq + ' ' + mirna)
-                    elif has_substitution_5p(seq_end_5p, consensus_end_5p):
-                        logging.warning(
-                        'Skipped (5p substitution) ' + seq + ' ' + mirna)
-                    elif has_substitution_3p(len_trim, seq_end_3p,
-                        consensus_end_3p):
+                    # option to check if same sequence mathches multiple mirna
+                    # if destructive pull is TRUE, assign seq to mirna/motif
+                    # with best distance metric
+                    dist = calc_edit_distance(seq_end_3p, seq_end_5p,
+                                              consensus_end_3p, consensus_end_5p,
+                                              delete_costs, substitute_costs,
+                                              insert_costs)
+                    if dist == -3:
                         logging.warning(
                         'Skipped (3p sequencing error) ' + seq + ' ' +
                             str(len_trim) + ' ' + mirna)
-                    else:
-                        # calculation of nt frequencies at each position
-                        nt_offset = seq_index_5p - consensus_index_5p
-                        for index, nt in enumerate(seq):
-                            freq_nt[nt][index - nt_offset] += num_reads
-                            for nt2 in ['A', 'C', 'G', 'T']:
-                                if nt2!=nt and (freq_nt[nt]==None or freq_nt[nt2][index - nt_offset] == None):
-                                    freq_nt[nt2][index - nt_offset] = 0
-                        # add to display queue
-                        table_out.append([mirna, seq, len_read, num_reads,
-                                ratio, len_trim, len_tail, seq_tail,
-                                vari_5p, has_other])
+                        continue
+                    if dist == -5:
+                        logging.warning(
+                        'Skipped (5p substitution) ' + seq + ' ' + mirna)
+                        continue
+                    if (config['destructive_motif_pull'] and len(has_other) > 0):
+                        best_matching_mirna = ""
+                        for k, v in dict_mirna_consensus.items():
+                            if v[0] in has_other.split(" "):
+                                if (lev(seq, v[1], delete_costs = delete_costs,
+                                    substitute_costs = substitute_costs,
+                                    insert_costs = insert_costs) < dist):
+                                    best_matching_mirna = v[0]
+                        if (len(best_matching_mirna) > 0):
+                            logging.warning(
+                                'Skipped (' + seq + ') better matches mirna: ' +
+                                best_matching_mirna)
+                            continue
+                    # calculation of nt frequencies at each position
+                    nt_offset = seq_index_5p - consensus_index_5p
+                    for index, nt in enumerate(seq):
+                        freq_nt[nt][index - nt_offset] += num_reads
+                        for nt2 in ['A', 'C', 'G', 'T']:
+                            if nt2!=nt and (freq_nt[nt] is None or freq_nt[
+                                nt2][index - nt_offset] is None):
+                                freq_nt[nt2][index - nt_offset] = 0
+                    # add to display queue
+                    table_out.append([mirna, seq, len_read, num_reads,
+                            ratio, len_trim, len_tail, seq_tail,
+                            vari_5p, has_other, dist])
 
-    # SECTION | MOVE STATISTICS INTO DATAFRAME ############################
-                df = pd.DataFrame(table_out,
-                              columns=["MIRNA",
-                                       "SEQUENCE",
-                                       "LEN_READ",
-                                       "READS",
-                                       "RATIO",
-                                       "LEN_TRIM",
-                                       "LEN_TAIL",
-                                       "SEQ_TAIL",
-                                       "VAR_5P",
-                                       "MATCH"])
-
+    # SECTION | MOVE STATISTICS INTO DATAFRAME ################################
+                sequence_info = pd.DataFrame(table_out,
+                                             columns=["MIRNA",
+                                                      "SEQUENCE",
+                                                      "LEN_READ",
+                                                      "READS",
+                                                      "RATIO",
+                                                      "LEN_TRIM",
+                                                      "LEN_TAIL",
+                                                      "SEQ_TAIL",
+                                                      "VAR_5P",
+                                                      "MATCH",
+                                                      "DISTANCE"])
                 if len(table_out) > 0:
-                    df.sort_values(by="READS", ascending=0, inplace=1)
-
+                    sequence_info.sort_values(by="READS", ascending=0, inplace=1)
+                else:
+                    continue
                 # calculate total reads
-                total_reads = float(df['READS'].sum())
+                total_reads = float(sequence_info['READS'].sum())
                 if total_reads == 0:
                     logging.info("Mirna " + mirna + " skipped: no supporting/matched reads")
                     continue
 
                 # calculate ratio
-                df['RATIO'] = df['READS'].apply(lambda x: round(100*x/total_reads, 2))
-                df2 = pd.DataFrame(freq_nt)
-                df2['MIRNA'] = mirna
-                if "N" not in df2:
-                    df2["N"] = 0.0
+                sequence_info['RATIO'] = sequence_info['READS'].apply(
+                    lambda x: round(100 * x / total_reads, 2))
+                nucleotide_dist = pd.DataFrame(freq_nt)
+                nucleotide_dist['MIRNA'] = mirna
+                for base in acgt:
+                    if base not in nucleotide_dist:
+                        nucleotide_dist[base] = 0.0000
+                    else:
+                        nucleotide_dist[base] = nucleotide_dist[base].fillna(0.0000)
+                if "N" not in nucleotide_dist:
+                    nucleotide_dist["N"] = 0.0000
                 else:
-                    df2["N"]=df2["N"].fillna(0.0)
+                    nucleotide_dist["N"]=nucleotide_dist["N"].fillna(0.0000)
                 if len(table_out) > 0:
-                    df2['READS'] = df2.sum(axis=1)
-                    df2.loc[:, "A":"T"] = df2.loc[
-                        :, "A":"T"].div(df2["READS"], axis=0)
-                    df2 = np.round(df2, decimals=4)
-                    df2.index.name = 'NT_POSITION'
-                df2.set_index('MIRNA', append=True, inplace=True)
-                df2 = df2.swaplevel(0, 1)
-                df2 = df2[["A", "C", "G", "T", "N", "READS"]]
+                    nucleotide_dist['READS'] = nucleotide_dist.sum(axis=1)
+                    nucleotide_dist.loc[
+                    :, "A":"T"] = nucleotide_dist.loc[:, "A":"T"].div(
+                        nucleotide_dist["READS"], axis=0)
+                    nucleotide_dist = np.round(nucleotide_dist, decimals=4)
+                    nucleotide_dist.index.name = 'NT_POSITION'
+                    nucleotide_dist.set_index('MIRNA', append=True, inplace=True)
+                    nucleotide_dist = nucleotide_dist.swaplevel(0, 1)
+                    nucleotide_dist = nucleotide_dist[["A", "C", "G", "T", "N",
+                                                       "READS"]]
 
-    # SECTION | GENERATE SUMMARY STATISTICS ###############################
+    # SECTION | GENERATE SUMMARY STATISTICS ###################################
                 # calculate 5' fidelity score
-                vals_vari_5p = df['VAR_5P'].tolist()
-                vals_reads = df['READS'].tolist()
+                vals_vari_5p = sequence_info['VAR_5P'].tolist()
+                vals_reads = sequence_info['READS'].tolist()
                 fidelity = 0
                 for vari_5p, read in zip(vals_vari_5p, vals_reads):
                     fidelity += (vari_5p * read)
                 fidelity = round((fidelity / total_reads), 4)
 
                 # calculate individual nt tailing ratios
-                vals_tail_seq = df['SEQ_TAIL'].tolist()
+                vals_tail_seq = sequence_info['SEQ_TAIL'].tolist()
                 array_nt = [0, 0, 0, 0]  # A C G T
                 for seq_tail, read in zip(vals_tail_seq, vals_reads):
                     count_nt = co.Counter(seq_tail)
@@ -388,8 +493,8 @@ rule analyze_isomir:
                 ratio_seq_trim_only = 0
                 ratio_seq_tail_only = 0
                 ratio_seq_trim_and_tail = 0
-                vals_len_trim = df['LEN_TRIM'].tolist()
-                vals_len_tail = df['LEN_TAIL'].tolist()
+                vals_len_trim = sequence_info['LEN_TRIM'].tolist()
+                vals_len_tail = sequence_info['LEN_TAIL'].tolist()
                 for len_trim, len_tail, read in zip(vals_len_trim, vals_len_tail, vals_reads):
                     read_ratio = 100*round(read / total_reads, 4)
                     if len_trim > 0 and len_tail == 0:
@@ -401,195 +506,138 @@ rule analyze_isomir:
 
     # SECTION | FILTER OUT DISPLAYED READS AND ADD % SIGN
                 # only show reads above threshold
-                df = df[(df.RATIO > config['min_ratio']) |
-                    (df.READS > config['min_read'])]
-                df['RATIO'] = df['RATIO'].apply(lambda x: str(x) + '%')
+                sequence_info = sequence_info[(sequence_info.RATIO > config['min_ratio']) |
+                                              (sequence_info.READS > config['min_read'])]
+                sequence_info['RATIO'] = sequence_info['RATIO'].apply(lambda x: str(x) + '%')
 
                 # calculate number of isomirs above threshold
-                total_isomirs = df.shape[0]
-                if (df['LEN_TRIM'].iloc[0] == 0 and df['LEN_TAIL'].iloc[0] == 0):
+                total_isomirs = sequence_info.shape[0]
+                if (sequence_info['LEN_TRIM'].iloc[0] == 0 and sequence_info[
+                    'LEN_TAIL'].iloc[0] == 0):
                     total_isomirs -= 1
 
-    # SECTION | DISPLAY HEADER AND SUMMARY STATISTICS #################
-                if config['display_summary']:
-                    with open(output[0], 'a') as out:
-                        total_reads_in_sample = sum(1 for line in open(input.input_files))/4
-                        summary_out = [[mirna,
-                                        motif,
-                                        consensus,
-                                        str(int(total_reads)),
-                                        str(total_isomirs),
-                                        str(fidelity),
-                                        ratio_a_tailing,
-                                        ratio_c_tailing,
-                                        ratio_g_tailing,
-                                        ratio_t_tailing,
-                                        str(ratio_seq_trim_only),
-                                        str(ratio_seq_trim_only + ratio_seq_trim_and_tail),
-                                        str(ratio_seq_tail_only),
-                                        str(ratio_seq_tail_only + ratio_seq_trim_and_tail),
-                                        str(ratio_seq_trim_and_tail),
-                                        str(int(total_reads_in_sample))]]
-                        df3 = pd.DataFrame(summary_out,
-                                           columns = ["MIRNA",
-                                                      "MOTIF",
-                                                      "CONSENSUS",
-                                                      "TOTAL READS",
-                                                      "TOTAL ISOMIRS",
-                                                      "FIDELITY 5P",
-                                                      "A TAILING",
-                                                      "C TAILING",
-                                                      "G TAILING",
-                                                      "T TAILING",
-                                                      "SEQUENCE TRIMMING ONLY",
-                                                      "SEQUENCE TRIMMING",
-                                                      "SEQUENCE TAILING ONLY",
-                                                      "SEQUENCE TAILING",
-                                                      "SEQUENCE TRIMMING AND TAILING",
-                                                      "TOTAL READS IN SAMPLE"])
-                        if first_ds:
-                            df3.to_csv(out, sep='\t', index = False)
-                            first_ds = False
-                        else:
-                            df3.to_csv(out, sep='\t', index=False, header = False)
+    # SECTION | DISPLAY HEADER AND SUMMARY STATISTICS #########################
+                summary_out = [[mirna,
+                                motif,
+                                consensus,
+                                str(int(total_reads)),
+                                str(total_isomirs),
+                                str(fidelity),
+                                ratio_a_tailing,
+                                ratio_c_tailing,
+                                ratio_g_tailing,
+                                ratio_t_tailing,
+                                str(ratio_seq_trim_only),
+                                str(ratio_seq_trim_only + ratio_seq_trim_and_tail),
+                                str(ratio_seq_tail_only),
+                                str(ratio_seq_tail_only + ratio_seq_trim_and_tail),
+                                str(ratio_seq_trim_and_tail),
+                                str(int(total_reads_in_sample))]]
+                summary = pd.DataFrame(summary_out,
+                                       columns = ["MIRNA",
+                                              "MOTIF",
+                                              "CONSENSUS",
+                                              "TOTAL_READS",
+                                              "TOTAL_ISOMIRS",
+                                              "FIDELITY_5P",
+                                              "A_TAILING",
+                                              "C_TAILING",
+                                              "G_TAILING",
+                                              "T_TAILING",
+                                              "SEQUENCE_TRIMMING_ONLY",
+                                              "SEQUENCE_TRIMMING",
+                                              "SEQUENCE_TAILING_ONLY",
+                                              "SEQUENCE_TAILING",
+                                              "SEQUENCE_TRIMMING_AND_TAILING",
+                                              "TOTAL_READS_IN_SAMPLE"])
+                if first_ds:
+                    summary_all = summary.copy()
+                    first_ds = False
                 else:
-                    open(output[0], 'a').close()
-    # SECTION | DISPLAY SEQUENCES AND SINGLE STATISTICS ###############
-                if config['display_sequence_info']:
-                    with open(output[1], 'a') as out:
-                        if first_dsi:
-                            df.to_csv(out, sep='\t', index = False)
-                            first_dsi = False
-                        else:
-                            df.to_csv(out, sep='\t', index=False, header = False)
-                else:
-                    open(output[1], 'a').close()
-                if config['display_nucleotide_dist']:
-                    with open(output[2], 'a') as out:
-                        if first_dnd:
-                            df2.to_csv(out, sep='\t')
-                            first_dnd = False
-                        else:
-                            df2.to_csv(out, sep='\t', header = False)
-                else:
-                    open(output[2], 'a').close()
+                    summary_all = summary_all.append(summary)
 
-rule cpm_normalize_motifs:
-    input:
-        'results/{A}.isomir.sequence_info.tsv',
-        'results/{A}.isomir.tsv'
-    output:
-        'results/{A}.isomir.expression.tsv'
-    run:
-        first_exp = True
-        if config['display_expression'] and config['display_sequence_info'] and config['display_summary']:
-            df = pd.read_csv(input[0], delimiter="\t", header = 0)
-            total_reads = pd.read_csv(input[1], delimiter="\t", header = 0, nrows = 2)['TOTAL READS IN SAMPLE'].iloc[0]
-            df['CPM'] = df['READS'] / df['READS'].sum() * float(10^6) # TPM is also len-norm
-            df['RPKM'] = df['READS'] / df['LEN_READ'] / total_reads * float(10^9)
+    # SECTION | DISPLAY SEQUENCES AND SINGLE STATISTICS #######################
+                if first_dsi:
+                    sequence_info_all = sequence_info.copy()
+                    first_dsi = False
+                else:
+                    sequence_info_all = sequence_info_all.append(sequence_info)
+                if first_dnd:
+                    nucleotide_dist_all = nucleotide_dist.copy()
+                    first_dnd = False
+                else:
+                    nucleotide_dist_all = nucleotide_dist_all.append(nucleotide_dist)
+
+    # SECTION | CALCULATE CPM AND RPKM OF READS AND OUTPUT RESULTS ############
+        if config['display_summary'] and not first_ds:
             with open(output[0], 'a') as out:
-                df.to_csv(out, sep='\t', index=False, header=True)
-        else:
-            open(output[0], 'a').close()
+                summary_all.to_csv(out, sep='\t', index=False, header=True)
+        if config['display_sequence_info'] and not first_dsi:
+            with open(output[1], 'a') as out:
+                sequence_info_all[
+                    'CPM'] = sequence_info_all['READS'] / sequence_info_all[
+                    'READS'].sum() * float(10 ** 6)
+                sequence_info_all[
+                    'RPKM'] = sequence_info_all['READS'] / sequence_info_all[
+                    'LEN_READ'] / total_reads_in_sample * float( 10 ** 9)
+                sequence_info_all.to_csv(
+                    out, sep='\t', index=False, header=True)
+        if config['display_nucleotide_dist'] and not first_dnd:
+            with open(output[2], 'a') as out:
+                nucleotide_dist_all.to_csv(
+                    out, sep='\t', index=False, header=True)
 
 rule group_outputs:
     input:
         input_name("results/", ".isomir.tsv"),
         input_name("results/", ".isomir.sequence_info.tsv"),
-        input_name("results/", ".isomir.expression.tsv"),
         input_name("results/", ".isomir.nucleotide_dist.tsv")
     output:
         'group_results/' + config['group_output_name'] + '.isomir.tsv',
         'group_results/' + config['group_output_name'] + '.isomir.sequence_info.tsv',
-        'group_results/' + config['group_output_name'] + '.isomir.expression.tsv',
         'group_results/' + config['group_output_name'] + '.isomir.nucleotide_dist.tsv'
+    log:
+        os.path.join("logs/", TIMESTAMP)
     run:
         prefix = "results/"
         sufix = [".isomir.tsv",
                  ".isomir.sequence_info.tsv",
-                 ".isomir.expression.tsv",
                  ".isomir.nucleotide_dict.tsv"]
         condition = [config['display_group_output'] and config['display_summary'],
                      config['display_group_output'] and config['display_sequence_info'],
-                     config['display_group_output'] and config['display_expression'] and config['display_summary'] and config['display_sequence_info'],
                      config['display_group_output'] and config['display_nucleotide_dist']]
-        
-        if config['display_distance_metric']:
-            motifs = motif_consensus_to_dict(config['motif_consensus_file'])
-            mirna_consensus = {v[0]:v[1] for k, v in motifs.items()}
-
-
-        for i in range(4):
+        logging.basicConfig(
+            filename=log[0],
+            level=logging.DEBUG,
+            format='%(levelname)s: %(message)s')
+        for i in range(3):
+            open(output[i], 'a').close()
             if condition[i]:
+                first = True
                 with open(output[i], 'a') as out:
-                    df = pd.read_csv(input[i*len(SAMPLES)], delimiter="\t", header = 0)
-                    df['SAMPLE'] = sample_name(input[i*len(SAMPLES)], prefix, sufix[i])
-                    cols = df.columns.tolist()
-                    cols = cols[-1:] + cols[:-1]
-                    df = df[cols]
-                    for inp in input[i*len(SAMPLES) + 1 : (i+1)*len(SAMPLES)]:
-                        df_rest = pd.read_csv(inp, delimiter="\t", header = 0)
-                        df_rest['SAMPLE'] = sample_name(inp, prefix, sufix[i])
-                        cols = df_rest.columns.tolist()
-                        cols = cols[-1:] + cols[:-1]
-                        df_rest = df_rest[cols]
-                        df = df.append(df_rest)
-
-                    # add distance metrics to seq_info or expression matrix
-                    if config['display_distance_metric'] and (i==1 or i==2):
-                        consensus = df["MIRNA"].apply(lambda x: mirna_consensus[x])
-                        unique_seqs = set(zip(df["SEQUENCE"], consensus))
-                        edit_distances = {}
-
-                        # set scores from config
-                        delete_costs = np.ones(128, dtype=np.float64)
-                        insert_costs = np.ones(128, dtype=np.float64)
-                        substitute_costs = np.ones((128, 128), dtype=np.float64)
-                        if config['deletion_score']:
-                            delete_costs[ord('A')] = config['deletion_score']
-                            delete_costs[ord('C')] = config['deletion_score']
-                            delete_costs[ord('G')] = config['deletion_score']
-                            delete_costs[ord('T')] = config['deletion_score']
-                        if config['insertion_score']:
-                            insert_costs[ord('A')] = config['insertion_score']
-                            insert_costs[ord('C')] = config['insertion_score']
-                            insert_costs[ord('G')] = config['insertion_score']
-                            insert_costs[ord('T')] = config['insertion_score']
-                        if config['substitution_AG']:
-                            substitute_costs[ord('A'), ord('G')] = config['substitution_AG']
-                        if config['substitution_GA']:
-                            substitute_costs[ord('G'), ord('A')] = config['substitution_GA']
-                        if config['substitution_CT']:
-                            substitute_costs[ord('C'), ord('T')] = config['substitution_CT']
-                        if config['substitution_TC']:
-                            substitute_costs[ord('T'), ord('C')] = config['substitution_TC']
-                        if config['substitution_AT']:
-                            substitute_costs[ord('A'), ord('T')] = config['substitution_AT']
-                        if config['substitution_TA']:
-                            substitute_costs[ord('T'), ord('A')] = config['substitution_TA']
-                        if config['substitution_AC']:
-                            substitute_costs[ord('A'), ord('C')] = config['substitution_AC']
-                        if config['substitution_CA']:
-                            substitute_costs[ord('C'), ord('A')] = config['substitution_CA']
-                        if config['substitution_GC']:
-                            substitute_costs[ord('G'), ord('C')] = config['substitution_GC']
-                        if config['substitution_CG']:
-                            substitute_costs[ord('C'), ord('G')] = config['substitution_CG']
-                        if config['substitution_GT']:
-                            substitute_costs[ord('G'), ord('T')] = config['substitution_GT']
-                        if config['substitution_TG']:
-                            substitute_costs[ord('T'), ord('G')] = config['substitution_TG']
-
-                        for pair in unique_seqs:
-                            edit_distances[pair] = lev(pair[0], pair[1], 
-                                delete_costs = delete_costs, 
-                                substitute_costs = substitute_costs,
-                                insert_costs = insert_costs)
-
-                        df['DISTANCE'] = df[['SEQUENCE', 'MIRNA']].apply(lambda row:
-                                         edit_distances[(row[0], mirna_consensus[row[1]])], 
-                                         axis=1)
-                    df.to_csv(out, sep='\t', index=False, header=True)
-            else:
-                open(output[i], 'a').close()
-
+                    for inp in input[i*len(SAMPLES) : (i+1)*len(SAMPLES)]:
+                        if first:
+                            try:
+                                df = pd.read_csv(inp, delimiter="\t", header = 0)
+                                first = False
+                            except:
+                                logging.warning("File " + inp + " is empty")
+                                continue
+                            df['SAMPLE'] = sample_name(
+                            input[i*len(SAMPLES)], prefix, sufix[i])
+                            cols = df.columns.tolist()
+                            cols = cols[-1:] + cols[:-1]
+                            df = df[cols]
+                        else:
+                            try:
+                                df_rest = pd.read_csv(inp, delimiter="\t", header = 0)
+                            except:
+                                logging.warning("File " + inp + " is empty")
+                                continue
+                            df_rest['SAMPLE'] = sample_name(inp, prefix, sufix[i])
+                            cols = df_rest.columns.tolist()
+                            cols = cols[-1:] + cols[:-1]
+                            df_rest = df_rest[cols]
+                            df = df.append(df_rest)
+                    if 'df' in vars():
+                        df.to_csv(out, sep='\t', index=False, header=True)
