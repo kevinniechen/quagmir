@@ -1,20 +1,19 @@
-# DISPLAY
-min_ratio: .1
-min_read: 9
+# FILTERING
+min_ratio: .1 # to be set to -1 to switch off min_ratio filtering
+min_read: 9 # to be set to -1 to switch off min_read filtering
+edit_distance_3p: 3 # to be set to -1 to switch off 3p filtering
+edit_distance_5p: 2 # to be set to -1 to switch off 5p filtering
 
+# DISPLAY
 display_summary: True
 display_sequence_info: True
 display_nucleotide_dist: True
 display_group_output: True
 
-filter_out_3p: True
-filter_out_5p: True
-
-edit_distance_3p: 3
-edit_distance_5p: 2
-
+# AMBIGUOUS LETTERS
 ambiguous_letters: True
-# FUNCTION
+
+# DESTRUCTIVE MOTIF PULL
 destructive_motif_pull: False
 
 # INPUT
