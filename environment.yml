@@ -33,7 +33,7 @@ dependencies:
 - ecdsa=0.13=py35_0
 - mkl=11.3.3=0
 - numpy=1.11.0=py35_1
-- openssl=1.0.2h=1
+- openssl=1.0.1
 - pandas=0.18.1=np111py35_0
 - paramiko=1.16.0=py35_0
 - pip=8.1.2=py35_0
