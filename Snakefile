@@ -29,6 +29,7 @@ base_ords = (A, C, G, T, R, Y, S, W, K, M, B, D, H, V,
 base_ords = set(base_ords)
 fastq_ords = {A, C, G, T, N}
 acgt = ["A", "C", "G", "T"]
+acgtn = ["A", "C", "G", "T", "N"]
 acgt_ords = {A, C, G, T}
 fastq_bases = {"A", "C", "G", "T", "N"}
 all_bases = {"A", "C", "G", "T", "N", "R", "Y", "S", "W", "K", "M", "B", "D",
@@ -402,7 +403,7 @@ rule analyze_isomir:
                     nt_offset = seq_index_5p - consensus_index_5p
                     for index, nt in enumerate(seq):
                         freq_nt[nt][index - nt_offset] += num_reads
-                        for nt2 in ['A', 'C', 'G', 'T']:
+                        for nt2 in ['A', 'C', 'G', 'T', 'N']:
                             if nt2!=nt and (freq_nt[nt] is None or freq_nt[
                                 nt2][index - nt_offset] is None):
                                 freq_nt[nt2][index - nt_offset] = 0
@@ -439,19 +440,15 @@ rule analyze_isomir:
                     lambda x: round(100 * x / total_reads, 2))
                 nucleotide_dist = pd.DataFrame(freq_nt)
                 nucleotide_dist['MIRNA'] = mirna
-                for base in acgt:
+                for base in acgtn:
                     if base not in nucleotide_dist:
                         nucleotide_dist[base] = 0.0000
                     else:
                         nucleotide_dist[base] = nucleotide_dist[base].fillna(0.0000)
-                if "N" not in nucleotide_dist:
-                    nucleotide_dist["N"] = 0.0000
-                else:
-                    nucleotide_dist["N"]=nucleotide_dist["N"].fillna(0.0000)
                 if len(table_out) > 0:
                     nucleotide_dist['READS'] = nucleotide_dist.sum(axis=1)
                     nucleotide_dist.loc[
-                    :, "A":"T"] = nucleotide_dist.loc[:, "A":"T"].div(
+                    :, acgtn] = nucleotide_dist.loc[:, acgtn].div(
                         nucleotide_dist["READS"], axis=0)
                     nucleotide_dist = np.round(nucleotide_dist, decimals=4)
                     nucleotide_dist.index.name = 'NT_POSITION'
@@ -535,21 +532,21 @@ rule analyze_isomir:
                                 str(int(total_reads_in_sample))]]
                 summary = pd.DataFrame(summary_out,
                                        columns = ["MIRNA",
-                                              "MOTIF",
-                                              "CONSENSUS",
-                                              "TOTAL_READS",
-                                              "TOTAL_ISOMIRS",
-                                              "FIDELITY_5P",
-                                              "A_TAILING",
-                                              "C_TAILING",
-                                              "G_TAILING",
-                                              "T_TAILING",
-                                              "SEQUENCE_TRIMMING_ONLY",
-                                              "SEQUENCE_TRIMMING",
-                                              "SEQUENCE_TAILING_ONLY",
-                                              "SEQUENCE_TAILING",
-                                              "SEQUENCE_TRIMMING_AND_TAILING",
-                                              "TOTAL_READS_IN_SAMPLE"])
+                                                  "MOTIF",
+                                                  "CONSENSUS",
+                                                  "TOTAL_READS",
+                                                  "TOTAL_ISOMIRS",
+                                                  "FIDELITY_5P",
+                                                  "A_TAILING",
+                                                  "C_TAILING",
+                                                  "G_TAILING",
+                                                  "T_TAILING",
+                                                  "SEQUENCE_TRIMMING_ONLY",
+                                                  "SEQUENCE_TRIMMING",
+                                                  "SEQUENCE_TAILING_ONLY",
+                                                  "SEQUENCE_TAILING",
+                                                  "SEQUENCE_TRIMMING_AND_TAILING",
+                                                  "TOTAL_READS_IN_SAMPLE"])
                 if first_ds:
                     summary_all = summary.copy()
                     first_ds = False
@@ -579,13 +576,26 @@ rule analyze_isomir:
                     'READS'].sum() * float(10 ** 6)
                 sequence_info_all[
                     'RPKM'] = sequence_info_all['READS'] / sequence_info_all[
-                    'LEN_READ'] / total_reads_in_sample * float( 10 ** 9)
+                    'LEN_READ'] / total_reads_in_sample * float(10 ** 9)
+                sequence_info_all = sequence_info_all[["MIRNA",
+                                                       "SEQUENCE",
+                                                       "LEN_READ",
+                                                       "READS",
+                                                       "RATIO",
+                                                       "LEN_TRIM",
+                                                       "LEN_TAIL",
+                                                       "SEQ_TAIL",
+                                                       "VAR_5P",
+                                                       "MATCH",
+                                                       "CPM",
+                                                       "RPKM",
+                                                       "DISTANCE"]]
                 sequence_info_all.to_csv(
                     out, sep='\t', index=False, header=True)
         if config['display_nucleotide_dist'] and not first_dnd:
             with open(output[2], 'a') as out:
                 nucleotide_dist_all.to_csv(
-                    out, sep='\t', index=False, header=True)
+                    out, sep='\t', index=True, header=True)
 
 rule group_outputs:
     input:
