@@ -138,7 +138,7 @@ if config['ambiguous_letters']:
         len2 = len(str2)
         for i in range(len(str1)-len2+1):
             if compare_strings(str1[i:i+len2], str2):
-                return(i)
+                return i
         return -1
 else:
     def find_in_string(str1, str2):
