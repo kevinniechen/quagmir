@@ -63,21 +63,6 @@ def compare_strings(fastq, consensus):
     return True
 
 
-def starts_with(str1, str2):
-    return len(str1)>=len(str2) and compare_strings(str1[:len(str2)], str2)
-
-
-def find_in_string(str1, str2):
-    if starts_with(str1, str2):
-        return 0
-    if len(str1) > len(str2):
-        recursive_find = find_in_string(str1[1:], str2)
-        if recursive_find == -1:
-            return -1
-        return recursive_find + 1
-    return -1
-
-
 def calc_trimming(seq_end, consensus_end):
     for i in range(0, min(len(seq_end), len(consensus_end))):
         if not compare_chars(seq_end[i], consensus_end[i]):
@@ -150,13 +135,10 @@ configfile:
 
 if config['ambiguous_letters']:
     def find_in_string(str1, str2):
-        if starts_with(str1, str2):
-            return 0
-        if len(str1) > len(str2):
-            recursive_find = find_in_string(str1[1:], str2)
-            if recursive_find == -1:
-                return -1
-            return recursive_find + 1
+        len2 = len(str2)
+        for i in range(len(str1)-len2+1):
+            if compare_strings(str1[i:i+len2], str2):
+                return(i)
         return -1
 else:
     def find_in_string(str1, str2):
