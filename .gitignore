@@ -17,3 +17,5 @@ copy.sh
 motif-list-13-new.fa
 test.fastq
 *.fastq
+motif-concensus_amb.fa
+motif*

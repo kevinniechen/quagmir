@@ -73,10 +73,29 @@ def calc_trimming(seq_end, consensus_end):
     return 0
 
 
+def calc_trimming_nonamb(seq_end, consensus_end):
+    for i in range(0, min(len(seq_end), len(consensus_end))):
+        if seq_end[i]!= consensus_end[i]:
+            return len(consensus_end) - i
+    if len(seq_end) < len(consensus_end):
+        return len(consensus_end) - len(seq_end)
+    return 0
+
+
 def calc_trimming_5p(seq_end, consensus_end):
     for i in range(0, min(len(seq_end), len(consensus_end))):
         if not compare_chars(seq_end[len(seq_end) - i - 1], consensus_end[len(
                 consensus_end) - i - 1]):
+            return len(consensus_end) - i
+    if len(seq_end) < len(consensus_end):
+        return len(consensus_end) - len(seq_end)
+    return 0
+
+
+def calc_trimming_5p_nonamb(seq_end, consensus_end):
+    for i in range(0, min(len(seq_end), len(consensus_end))):
+        if seq_end[len(seq_end) - i - 1] != consensus_end[len(
+                consensus_end) - i - 1]:
             return len(consensus_end) - i
     if len(seq_end) < len(consensus_end):
         return len(consensus_end) - len(seq_end)
@@ -312,6 +331,14 @@ rule analyze_isomir:
         #     if contains_ambiguous_letters(key) and
 
         motif_list = list(dict_mirna_consensus.keys())
+
+        dict_mirna_consensus_amb = {}
+        dict_mirna_consensus_nonamb = {}
+        for motif, value in dict_mirna_consensus.items():
+            if contains_ambiguous_letters(value[1]):
+                dict_mirna_consensus_amb[motif] = value
+            else:
+                dict_mirna_consensus_nonamb[motif] = value
         total_reads_in_sample = sum(1 for line in open(input.input_files)) / 4
         first_ds = True
         first_dsi = True
@@ -332,7 +359,7 @@ rule analyze_isomir:
                 ratio = float(num_reads)
                 len_read = len(seq)
 
-                for motif, value in dict_mirna_consensus.items():
+                for motif, value in dict_mirna_consensus_amb.items():
                     mirna = value[0]
                     consensus = value[1]
                     ##table_out = []
@@ -348,13 +375,12 @@ rule analyze_isomir:
                         dict_mirna_consensus, line, motif, motif_list)
 
                     # sequence manipulations
-                    consensus_index_3p = find_in_string(
-                        consensus, motif) + len(motif)
-                    seq_index_3p = find_in_string(seq, motif) + len(motif)
+                    consensus_index_5p = str.find(consensus, motif)
+                    consensus_index_3p = consensus_index_5p + len(motif)
+                    seq_index_5p = find_in_string(seq, motif)
+                    seq_index_3p = seq_index_5p + len(motif)
                     consensus_end_3p = consensus[consensus_index_3p:]
                     seq_end_3p = seq[seq_index_3p:]
-                    consensus_index_5p = find_in_string(consensus, motif)
-                    seq_index_5p = find_in_string(seq, motif)
                     consensus_end_5p = consensus[:consensus_index_5p]
                     seq_end_5p = seq[:seq_index_5p]
 
@@ -418,6 +444,205 @@ rule analyze_isomir:
                         table_out[mirna] = [[mirna, seq, len_read, num_reads,
                                 ratio, len_trim, len_tail, seq_tail,
                                 vari_5p, has_other, dist]]
+
+                if 'N' in seq:
+                    for motif, value in dict_mirna_consensus_nonamb.items():
+                        mirna = value[0]
+                        consensus = value[1]
+                        ##table_out = []
+                        freq_nt = co.defaultdict(lambda: co.defaultdict(int))
+                        ##logging.debug("Start motif: " + motif + ' mirna: '
+                        # + mirna)
+
+                        if not contains_motif(seq, motif):
+                            continue
+
+                        ##num_reads = int(line.rpartition(' ')[0])
+                        # ascertain sequences pulled in by several miRNA motifs
+                        has_other = other_motifs_pulled_seq(
+                            dict_mirna_consensus, line, motif, motif_list)
+
+                        # sequence manipulations
+                        consensus_index_5p = str.find(consensus, motif)
+                        consensus_index_3p = consensus_index_5p + len(motif)
+                        seq_index_5p = find_in_string(seq, motif)
+                        seq_index_3p = seq_index_5p + len(motif)
+                        consensus_end_3p = consensus[consensus_index_3p:]
+                        seq_end_3p = seq[seq_index_3p:]
+                        consensus_end_5p = consensus[:consensus_index_5p]
+                        seq_end_5p = seq[:seq_index_5p]
+
+                        # calculation of single-statistics
+                        ##ratio = float(num_reads)
+                        ##len_read = len(seq)
+                        len_trim = calc_trimming(seq_end_3p,
+                                                 consensus_end_3p)
+                        len_tail = calc_tailing(
+                            seq_end_3p, consensus_end_3p, len_trim)
+                        seq_tail = get_tailing_seq(seq, len_tail)
+                        len_trim_5p = calc_trimming_5p(
+                            seq_end_5p, consensus_end_5p)
+                        vari_5p = max(len_trim_5p,
+                                      calc_tailing(
+                                          seq_end_5p, consensus_end_5p,
+                                          len_trim_5p))
+
+                        # option to check if same sequence mathches multiple
+                        #  mirna
+                        # if destructive pull is TRUE, assign seq to
+                        # mirna/motif
+                        # with best distance metric
+                        dist = calc_edit_distance(seq_end_3p, seq_end_5p,
+                                                  consensus_end_3p,
+                                                  consensus_end_5p,
+                                                  delete_costs,
+                                                  substitute_costs,
+                                                  insert_costs)
+                        if dist == -3:
+                            logging.warning(
+                                'Skipped (3p sequencing error) ' + seq + ' ' +
+                                str(len_trim) + ' ' + mirna)
+                            continue
+                        if dist == -5:
+                            logging.warning(
+                                'Skipped (5p substitution) ' + seq + ' ' +
+                                mirna)
+                            continue
+                        if (config['destructive_motif_pull'] and len(
+                                has_other) > 0):
+                            best_matching_mirna = ""
+                            for k, v in dict_mirna_consensus.items():
+                                if v[0] in has_other.split(" "):
+                                    if (lev(seq, v[1],
+                                            delete_costs=delete_costs,
+                                            substitute_costs=substitute_costs,
+                                            insert_costs=insert_costs) < dist):
+                                        best_matching_mirna = v[0]
+                            if (len(best_matching_mirna) > 0):
+                                logging.warning(
+                                    'Skipped (' + seq + ') better matches '
+                                                        'mirna: ' +
+                                    best_matching_mirna)
+                                continue
+                        # calculation of nt frequencies at each position
+                        nt_offset = seq_index_5p - consensus_index_5p
+                        for index, nt in enumerate(seq):
+                            freq_nt[nt][index - nt_offset] += num_reads
+                            for nt2 in ['A', 'C', 'G', 'T', 'N']:
+                                if nt2 != nt and (
+                                        freq_nt[nt] is None or freq_nt[
+                                    nt2][index - nt_offset] is None):
+                                    freq_nt[nt2][index - nt_offset] = 0
+                        # add to display queue
+                        if mirna in table_out:
+                            table_out[mirna].append(
+                                [mirna, seq, len_read, num_reads,
+                                 ratio, len_trim, len_tail, seq_tail,
+                                 vari_5p, has_other, dist])
+                        else:
+                            table_out[mirna] = [[mirna, seq, len_read, num_reads,
+                                 ratio, len_trim, len_tail, seq_tail,
+                                 vari_5p, has_other, dist]]
+
+                else:
+                    for motif, value in dict_mirna_consensus_nonamb.items():
+                        mirna = value[0]
+                        consensus = value[1]
+                        ##table_out = []
+                        freq_nt = co.defaultdict(lambda: co.defaultdict(int))
+                        ##logging.debug("Start motif: " + motif + ' mirna: '
+                        # + mirna)
+
+                        if motif not in seq:
+                            continue
+
+                        ##num_reads = int(line.rpartition(' ')[0])
+                        # ascertain sequences pulled in by several miRNA motifs
+                        has_other = other_motifs_pulled_seq(
+                            dict_mirna_consensus, line, motif, motif_list)
+
+                        # sequence manipulations
+                        consensus_index_5p = str.find(consensus, motif)
+                        consensus_index_3p = consensus_index_5p + len(motif)
+                        seq_index_5p = str.find(seq, motif)
+                        seq_index_3p = seq_index_5p + len(motif)
+                        consensus_end_3p = consensus[consensus_index_3p:]
+                        seq_end_3p = seq[seq_index_3p:]
+                        consensus_end_5p = consensus[:consensus_index_5p]
+                        seq_end_5p = seq[:seq_index_5p]
+
+                        # calculation of single-statistics
+                        ##ratio = float(num_reads)
+                        ##len_read = len(seq)
+                        len_trim = calc_trimming_nonamb(seq_end_3p,
+                                                 consensus_end_3p)
+                        len_tail = calc_tailing(
+                            seq_end_3p, consensus_end_3p, len_trim)
+                        seq_tail = get_tailing_seq(seq, len_tail)
+                        len_trim_5p = calc_trimming_5p_nonamb(
+                            seq_end_5p, consensus_end_5p)
+                        vari_5p = max(len_trim_5p,
+                                      calc_tailing(
+                                          seq_end_5p, consensus_end_5p,
+                                          len_trim_5p))
+
+                        # option to check if same sequence mathches multiple
+                        #  mirna
+                        # if destructive pull is TRUE, assign seq to
+                        # mirna/motif
+                        # with best distance metric
+                        dist = calc_edit_distance(seq_end_3p, seq_end_5p,
+                                                  consensus_end_3p,
+                                                  consensus_end_5p,
+                                                  delete_costs,
+                                                  substitute_costs,
+                                                  insert_costs)
+                        if dist == -3:
+                            logging.warning(
+                                'Skipped (3p sequencing error) ' + seq + ' ' +
+                                str(len_trim) + ' ' + mirna)
+                            continue
+                        if dist == -5:
+                            logging.warning(
+                                'Skipped (5p substitution) ' + seq + ' ' +
+                                mirna)
+                            continue
+                        if (config['destructive_motif_pull'] and len(
+                                has_other) > 0):
+                            best_matching_mirna = ""
+                            for k, v in dict_mirna_consensus.items():
+                                if v[0] in has_other.split(" "):
+                                    if (lev(seq, v[1],
+                                            delete_costs=delete_costs,
+                                            substitute_costs=substitute_costs,
+                                            insert_costs=insert_costs) < dist):
+                                        best_matching_mirna = v[0]
+                            if (len(best_matching_mirna) > 0):
+                                logging.warning(
+                                    'Skipped (' + seq + ') better matches '
+                                                        'mirna: ' +
+                                    best_matching_mirna)
+                                continue
+                        # calculation of nt frequencies at each position
+                        nt_offset = seq_index_5p - consensus_index_5p
+                        for index, nt in enumerate(seq):
+                            freq_nt[nt][index - nt_offset] += num_reads
+                            for nt2 in ['A', 'C', 'G', 'T', 'N']:
+                                if nt2 != nt and (
+                                        freq_nt[nt] is None or freq_nt[
+                                    nt2][index - nt_offset] is None):
+                                    freq_nt[nt2][index - nt_offset] = 0
+                        # add to display queue
+                        if mirna in table_out:
+                            table_out[mirna].append(
+                                [mirna, seq, len_read, num_reads,
+                                 ratio, len_trim, len_tail, seq_tail,
+                                 vari_5p, has_other, dist])
+                        else:
+                            table_out[mirna] = [
+                                [mirna, seq, len_read, num_reads,
+                                 ratio, len_trim, len_tail, seq_tail,
+                                 vari_5p, has_other, dist]]
 
     # SECTION | MOVE STATISTICS INTO DATAFRAME ################################
         for motif, value in dict_mirna_consensus.items():
