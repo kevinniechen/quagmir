@@ -34,6 +34,7 @@ acgt_ords = {A, C, G, T}
 fastq_bases = {"A", "C", "G", "T", "N"}
 all_bases = {"A", "C", "G", "T", "N", "R", "Y", "S", "W", "K", "M", "B", "D",
              "H", "V"}
+ambiguous_letters = {"N", "R", "Y", "S", "W", "K", "M", "B", "D", "H", "V"}
 comparison_ord = dict([(A, {A}), (C, {C}), (G, {G}), (T, {T}), (R, {A, G}),
                        (Y, {C, T}), (S, {C, G}), (W, {A, T}), (K, {G, T}),
                        (M, {A, C}), (B, {C, G, T}), (D, {A, G, T}),
@@ -149,6 +150,12 @@ def contains_motif(line, motif):
     if find_in_string(line, motif) == -1:
         return False
     return True
+
+def contains_ambiguous_letters(str):
+    for letter in ambiguous_letters:
+        if str.find(letter) != -1:
+            return True
+    return False
 
 if config['edit_distance_3p'] == -1:
     if config['edit_distance_5p'] == -1:
@@ -298,6 +305,12 @@ rule analyze_isomir:
         logging.debug("Start sample: " + input.collapsed_fasta)
         # SECTION | SETUP #####################################################
         dict_mirna_consensus = motif_consensus_to_dict(input.motif_consensus)
+
+        # dict_ambiguous = {}
+        # dict_nonambiguous = {}
+        # for key, value in dict_mirna_consensus.items():
+        #     if contains_ambiguous_letters(key) and
+
         motif_list = list(dict_mirna_consensus.keys())
         total_reads_in_sample = sum(1 for line in open(input.input_files)) / 4
         first_ds = True
@@ -308,21 +321,28 @@ rule analyze_isomir:
         open(output[2], 'a').close()
 
         # SECTION | MIRNA LOOP ################################################
-        for motif, value in dict_mirna_consensus.items():
-            mirna = value[0]
-            consensus = value[1]
-            table_out = []
-            freq_nt = co.defaultdict(lambda: co.defaultdict(int))
-            logging.debug("Start motif: " + motif + ' mirna: ' + mirna)
 
-        # SECTION | GENERATE SINGLE STATISTICS ################################
-            with open(str(input.collapsed_fasta), "rt") as sample:
-                # calculate total reads
-                for line in sample:
-                    seq = line.rpartition(' ')[2].rstrip()
+        table_out = {}
+        with open(str(input.collapsed_fasta), "rt") as sample:
+            # calculate total reads
+            for line in sample:
+
+                seq = line.rpartition(' ')[2].rstrip()
+                num_reads = int(line.rpartition(' ')[0])
+                ratio = float(num_reads)
+                len_read = len(seq)
+
+                for motif, value in dict_mirna_consensus.items():
+                    mirna = value[0]
+                    consensus = value[1]
+                    ##table_out = []
+                    freq_nt = co.defaultdict(lambda: co.defaultdict(int))
+                    ##logging.debug("Start motif: " + motif + ' mirna: ' + mirna)
+
                     if not contains_motif(seq, motif):
                         continue
-                    num_reads = int(line.rpartition(' ')[0])
+
+                    ##num_reads = int(line.rpartition(' ')[0])
                     # ascertain sequences pulled in by several miRNA motifs
                     has_other = other_motifs_pulled_seq(
                         dict_mirna_consensus, line, motif, motif_list)
@@ -339,8 +359,8 @@ rule analyze_isomir:
                     seq_end_5p = seq[:seq_index_5p]
 
                     # calculation of single-statistics
-                    ratio = float(num_reads)
-                    len_read = len(seq)
+                    ##ratio = float(num_reads)
+                    ##len_read = len(seq)
                     len_trim = calc_trimming(seq_end_3p,
                         consensus_end_3p)
                     len_tail = calc_tailing(
@@ -390,162 +410,174 @@ rule analyze_isomir:
                                 nt2][index - nt_offset] is None):
                                 freq_nt[nt2][index - nt_offset] = 0
                     # add to display queue
-                    table_out.append([mirna, seq, len_read, num_reads,
-                            ratio, len_trim, len_tail, seq_tail,
-                            vari_5p, has_other, dist])
+                    if mirna in table_out:
+                        table_out[mirna].append([mirna, seq, len_read, num_reads,
+                                ratio, len_trim, len_tail, seq_tail,
+                                vari_5p, has_other, dist])
+                    else:
+                        table_out[mirna] = [[mirna, seq, len_read, num_reads,
+                                ratio, len_trim, len_tail, seq_tail,
+                                vari_5p, has_other, dist]]
 
     # SECTION | MOVE STATISTICS INTO DATAFRAME ################################
-                sequence_info = pd.DataFrame(table_out,
-                                             columns=["MIRNA",
-                                                      "SEQUENCE",
-                                                      "LEN_READ",
-                                                      "READS",
-                                                      "RATIO",
-                                                      "LEN_TRIM",
-                                                      "LEN_TAIL",
-                                                      "SEQ_TAIL",
-                                                      "VAR_5P",
-                                                      "MATCH",
-                                                      "DISTANCE"])
-                if len(table_out) > 0:
-                    sequence_info.sort_values(by="READS", ascending=0, inplace=1)
+        for motif, value in dict_mirna_consensus.items():
+            mirna = value[0]
+            consensus = value[1]
+            freq_nt = co.defaultdict(lambda: co.defaultdict(int))
+            if mirna not in table_out:
+                continue
+            table_out_mirna = table_out[mirna]
+            sequence_info = pd.DataFrame(table_out_mirna,
+                                         columns=["MIRNA",
+                                                  "SEQUENCE",
+                                                  "LEN_READ",
+                                                  "READS",
+                                                  "RATIO",
+                                                  "LEN_TRIM",
+                                                  "LEN_TAIL",
+                                                  "SEQ_TAIL",
+                                                  "VAR_5P",
+                                                  "MATCH",
+                                                  "DISTANCE"])
+            if len(table_out_mirna) > 0:
+                sequence_info.sort_values(by="READS", ascending=0, inplace=1)
+            else:
+                continue
+            # calculate total reads
+            total_reads = float(sequence_info['READS'].sum())
+            if total_reads == 0:
+                logging.info("Mirna " + mirna + " skipped: no supporting/matched reads")
+                continue
+
+            # calculate ratio
+            sequence_info['RATIO'] = sequence_info['READS'].apply(
+                lambda x: round(100 * x / total_reads, 2))
+            nucleotide_dist = pd.DataFrame(freq_nt)
+            nucleotide_dist['MIRNA'] = mirna
+            for base in acgtn:
+                if base not in nucleotide_dist:
+                    nucleotide_dist[base] = 0.0000
                 else:
-                    continue
-                # calculate total reads
-                total_reads = float(sequence_info['READS'].sum())
-                if total_reads == 0:
-                    logging.info("Mirna " + mirna + " skipped: no supporting/matched reads")
-                    continue
+                    nucleotide_dist[base] = nucleotide_dist[base].fillna(0.0000)
+            if len(table_out_mirna) > 0:
+                nucleotide_dist['READS'] = nucleotide_dist.sum(axis=1)
+                nucleotide_dist.loc[
+                :, acgtn] = nucleotide_dist.loc[:, acgtn].div(
+                    nucleotide_dist["READS"], axis=0)
+                nucleotide_dist = np.round(nucleotide_dist, decimals=4)
+                nucleotide_dist.index.name = 'NT_POSITION'
+                nucleotide_dist.set_index('MIRNA', append=True, inplace=True)
+                nucleotide_dist = nucleotide_dist.swaplevel(0, 1)
+                nucleotide_dist = nucleotide_dist[["A", "C", "G", "T", "N",
+                                                   "READS"]]
 
-                # calculate ratio
-                sequence_info['RATIO'] = sequence_info['READS'].apply(
-                    lambda x: round(100 * x / total_reads, 2))
-                nucleotide_dist = pd.DataFrame(freq_nt)
-                nucleotide_dist['MIRNA'] = mirna
-                for base in acgtn:
-                    if base not in nucleotide_dist:
-                        nucleotide_dist[base] = 0.0000
-                    else:
-                        nucleotide_dist[base] = nucleotide_dist[base].fillna(0.0000)
-                if len(table_out) > 0:
-                    nucleotide_dist['READS'] = nucleotide_dist.sum(axis=1)
-                    nucleotide_dist.loc[
-                    :, acgtn] = nucleotide_dist.loc[:, acgtn].div(
-                        nucleotide_dist["READS"], axis=0)
-                    nucleotide_dist = np.round(nucleotide_dist, decimals=4)
-                    nucleotide_dist.index.name = 'NT_POSITION'
-                    nucleotide_dist.set_index('MIRNA', append=True, inplace=True)
-                    nucleotide_dist = nucleotide_dist.swaplevel(0, 1)
-                    nucleotide_dist = nucleotide_dist[["A", "C", "G", "T", "N",
-                                                       "READS"]]
+# SECTION | GENERATE SUMMARY STATISTICS ###################################
+            # calculate 5' fidelity score
+            vals_vari_5p = sequence_info['VAR_5P'].tolist()
+            vals_reads = sequence_info['READS'].tolist()
+            fidelity = 0
+            for vari_5p, read in zip(vals_vari_5p, vals_reads):
+                fidelity += (vari_5p * read)
+            fidelity = round((fidelity / total_reads), 4)
 
-    # SECTION | GENERATE SUMMARY STATISTICS ###################################
-                # calculate 5' fidelity score
-                vals_vari_5p = sequence_info['VAR_5P'].tolist()
-                vals_reads = sequence_info['READS'].tolist()
-                fidelity = 0
-                for vari_5p, read in zip(vals_vari_5p, vals_reads):
-                    fidelity += (vari_5p * read)
-                fidelity = round((fidelity / total_reads), 4)
+            # calculate individual nt tailing ratios
+            vals_tail_seq = sequence_info['SEQ_TAIL'].tolist()
+            array_nt = [0, 0, 0, 0]  # A C G T
+            for seq_tail, read in zip(vals_tail_seq, vals_reads):
+                count_nt = co.Counter(seq_tail)
+                array_nt[0] += (count_nt['A'] * read)
+                array_nt[1] += (count_nt['C'] * read)
+                array_nt[2] += (count_nt['G'] * read)
+                array_nt[3] += (count_nt['T'] * read)
+            total_nt_tail = sum(array_nt)
+            ratio_a_tailing = "nan"
+            ratio_c_tailing = "nan"
+            ratio_g_tailing = "nan"
+            ratio_t_tailing = "nan"
+            if total_nt_tail > 0:
+                ratio_a_tailing = str(100*round(array_nt[0] / total_nt_tail, 4))
+                ratio_c_tailing = str(100*round(array_nt[1] / total_nt_tail, 4))
+                ratio_g_tailing = str(100*round(array_nt[2] / total_nt_tail, 4))
+                ratio_t_tailing = str(100*round(array_nt[3] / total_nt_tail, 4))
 
-                # calculate individual nt tailing ratios
-                vals_tail_seq = sequence_info['SEQ_TAIL'].tolist()
-                array_nt = [0, 0, 0, 0]  # A C G T
-                for seq_tail, read in zip(vals_tail_seq, vals_reads):
-                    count_nt = co.Counter(seq_tail)
-                    array_nt[0] += (count_nt['A'] * read)
-                    array_nt[1] += (count_nt['C'] * read)
-                    array_nt[2] += (count_nt['G'] * read)
-                    array_nt[3] += (count_nt['T'] * read)
-                total_nt_tail = sum(array_nt)
-                ratio_a_tailing = "nan"
-                ratio_c_tailing = "nan"
-                ratio_g_tailing = "nan"
-                ratio_t_tailing = "nan"
-                if total_nt_tail > 0:
-                    ratio_a_tailing = str(100*round(array_nt[0] / total_nt_tail, 4))
-                    ratio_c_tailing = str(100*round(array_nt[1] / total_nt_tail, 4))
-                    ratio_g_tailing = str(100*round(array_nt[2] / total_nt_tail, 4))
-                    ratio_t_tailing = str(100*round(array_nt[3] / total_nt_tail, 4))
+            # calculate ratios of trimmed/tailed sequences
+            ratio_seq_trim_only = 0
+            ratio_seq_tail_only = 0
+            ratio_seq_trim_and_tail = 0
+            vals_len_trim = sequence_info['LEN_TRIM'].tolist()
+            vals_len_tail = sequence_info['LEN_TAIL'].tolist()
+            for len_trim, len_tail, read in zip(vals_len_trim, vals_len_tail, vals_reads):
+                read_ratio = 100*round(read / total_reads, 4)
+                if len_trim > 0 and len_tail == 0:
+                    ratio_seq_trim_only += read_ratio
+                if len_tail > 0 and len_trim == 0:
+                    ratio_seq_tail_only += read_ratio
+                if len_trim > 0 and len_tail > 0:
+                    ratio_seq_trim_and_tail += read_ratio
 
-                # calculate ratios of trimmed/tailed sequences
-                ratio_seq_trim_only = 0
-                ratio_seq_tail_only = 0
-                ratio_seq_trim_and_tail = 0
-                vals_len_trim = sequence_info['LEN_TRIM'].tolist()
-                vals_len_tail = sequence_info['LEN_TAIL'].tolist()
-                for len_trim, len_tail, read in zip(vals_len_trim, vals_len_tail, vals_reads):
-                    read_ratio = 100*round(read / total_reads, 4)
-                    if len_trim > 0 and len_tail == 0:
-                        ratio_seq_trim_only += read_ratio
-                    if len_tail > 0 and len_trim == 0:
-                        ratio_seq_tail_only += read_ratio
-                    if len_trim > 0 and len_tail > 0:
-                        ratio_seq_trim_and_tail += read_ratio
+# SECTION | FILTER OUT DISPLAYED READS AND ADD % SIGN
+            # only show reads above threshold
+            sequence_info = sequence_info[(sequence_info.RATIO > config['min_ratio']) |
+                                          (sequence_info.READS > config['min_read'])]
+            sequence_info['RATIO'] = sequence_info['RATIO'].apply(lambda x: str(x) + '%')
 
-    # SECTION | FILTER OUT DISPLAYED READS AND ADD % SIGN
-                # only show reads above threshold
-                sequence_info = sequence_info[(sequence_info.RATIO > config['min_ratio']) |
-                                              (sequence_info.READS > config['min_read'])]
-                sequence_info['RATIO'] = sequence_info['RATIO'].apply(lambda x: str(x) + '%')
+            # calculate number of isomirs above threshold
+            total_isomirs = sequence_info.shape[0]
+            if (sequence_info['LEN_TRIM'].iloc[0] == 0 and sequence_info[
+                'LEN_TAIL'].iloc[0] == 0):
+                total_isomirs -= 1
 
-                # calculate number of isomirs above threshold
-                total_isomirs = sequence_info.shape[0]
-                if (sequence_info['LEN_TRIM'].iloc[0] == 0 and sequence_info[
-                    'LEN_TAIL'].iloc[0] == 0):
-                    total_isomirs -= 1
+# SECTION | DISPLAY HEADER AND SUMMARY STATISTICS #########################
+            summary_out = [[mirna,
+                            motif,
+                            consensus,
+                            str(int(total_reads)),
+                            str(total_isomirs),
+                            str(fidelity),
+                            ratio_a_tailing,
+                            ratio_c_tailing,
+                            ratio_g_tailing,
+                            ratio_t_tailing,
+                            str(ratio_seq_trim_only),
+                            str(ratio_seq_trim_only + ratio_seq_trim_and_tail),
+                            str(ratio_seq_tail_only),
+                            str(ratio_seq_tail_only + ratio_seq_trim_and_tail),
+                            str(ratio_seq_trim_and_tail),
+                            str(int(total_reads_in_sample))]]
+            summary = pd.DataFrame(summary_out,
+                                   columns = ["MIRNA",
+                                              "MOTIF",
+                                              "CONSENSUS",
+                                              "TOTAL_READS",
+                                              "TOTAL_ISOMIRS",
+                                              "FIDELITY_5P",
+                                              "A_TAILING",
+                                              "C_TAILING",
+                                              "G_TAILING",
+                                              "T_TAILING",
+                                              "SEQUENCE_TRIMMING_ONLY",
+                                              "SEQUENCE_TRIMMING",
+                                              "SEQUENCE_TAILING_ONLY",
+                                              "SEQUENCE_TAILING",
+                                              "SEQUENCE_TRIMMING_AND_TAILING",
+                                              "TOTAL_READS_IN_SAMPLE"])
+            if first_ds:
+                summary_all = summary.copy()
+                first_ds = False
+            else:
+                summary_all = summary_all.append(summary)
 
-    # SECTION | DISPLAY HEADER AND SUMMARY STATISTICS #########################
-                summary_out = [[mirna,
-                                motif,
-                                consensus,
-                                str(int(total_reads)),
-                                str(total_isomirs),
-                                str(fidelity),
-                                ratio_a_tailing,
-                                ratio_c_tailing,
-                                ratio_g_tailing,
-                                ratio_t_tailing,
-                                str(ratio_seq_trim_only),
-                                str(ratio_seq_trim_only + ratio_seq_trim_and_tail),
-                                str(ratio_seq_tail_only),
-                                str(ratio_seq_tail_only + ratio_seq_trim_and_tail),
-                                str(ratio_seq_trim_and_tail),
-                                str(int(total_reads_in_sample))]]
-                summary = pd.DataFrame(summary_out,
-                                       columns = ["MIRNA",
-                                                  "MOTIF",
-                                                  "CONSENSUS",
-                                                  "TOTAL_READS",
-                                                  "TOTAL_ISOMIRS",
-                                                  "FIDELITY_5P",
-                                                  "A_TAILING",
-                                                  "C_TAILING",
-                                                  "G_TAILING",
-                                                  "T_TAILING",
-                                                  "SEQUENCE_TRIMMING_ONLY",
-                                                  "SEQUENCE_TRIMMING",
-                                                  "SEQUENCE_TAILING_ONLY",
-                                                  "SEQUENCE_TAILING",
-                                                  "SEQUENCE_TRIMMING_AND_TAILING",
-                                                  "TOTAL_READS_IN_SAMPLE"])
-                if first_ds:
-                    summary_all = summary.copy()
-                    first_ds = False
-                else:
-                    summary_all = summary_all.append(summary)
-
-    # SECTION | DISPLAY SEQUENCES AND SINGLE STATISTICS #######################
-                if first_dsi:
-                    sequence_info_all = sequence_info.copy()
-                    first_dsi = False
-                else:
-                    sequence_info_all = sequence_info_all.append(sequence_info)
-                if first_dnd:
-                    nucleotide_dist_all = nucleotide_dist.copy()
-                    first_dnd = False
-                else:
-                    nucleotide_dist_all = nucleotide_dist_all.append(nucleotide_dist)
+# SECTION | DISPLAY SEQUENCES AND SINGLE STATISTICS #######################
+            if first_dsi:
+                sequence_info_all = sequence_info.copy()
+                first_dsi = False
+            else:
+                sequence_info_all = sequence_info_all.append(sequence_info)
+            if first_dnd:
+                nucleotide_dist_all = nucleotide_dist.copy()
+                first_dnd = False
+            else:
+                nucleotide_dist_all = nucleotide_dist_all.append(nucleotide_dist)
 
     # SECTION | CALCULATE CPM AND RPKM OF READS AND OUTPUT RESULTS ############
         if config['display_summary'] and not first_ds:

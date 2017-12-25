@@ -14,3 +14,6 @@ playground.py
 data/test.fastq
 compare.py
 copy.sh
+motif-list-13-new.fa
+test.fastq
+*.fastq
