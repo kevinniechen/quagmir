@@ -350,6 +350,7 @@ rule analyze_isomir:
         # SECTION | MIRNA LOOP ################################################
 
         table_out = {}
+        freq_nt_all = {}
         with open(str(input.collapsed_fasta), "rt") as sample:
             # calculate total reads
             for line in sample:
@@ -362,14 +363,15 @@ rule analyze_isomir:
                 for motif, value in dict_mirna_consensus_amb.items():
                     mirna = value[0]
                     consensus = value[1]
-                    ##table_out = []
-                    freq_nt = co.defaultdict(lambda: co.defaultdict(int))
+
+                    if mirna not in freq_nt_all.keys():
+                        freq_nt_all[mirna] = co.defaultdict(lambda: co.defaultdict(int))
+
                     ##logging.debug("Start motif: " + motif + ' mirna: ' + mirna)
 
                     if not contains_motif(seq, motif):
                         continue
 
-                    ##num_reads = int(line.rpartition(' ')[0])
                     # ascertain sequences pulled in by several miRNA motifs
                     has_other = other_motifs_pulled_seq(
                         dict_mirna_consensus, line, motif, motif_list)
@@ -385,8 +387,6 @@ rule analyze_isomir:
                     seq_end_5p = seq[:seq_index_5p]
 
                     # calculation of single-statistics
-                    ##ratio = float(num_reads)
-                    ##len_read = len(seq)
                     len_trim = calc_trimming(seq_end_3p,
                         consensus_end_3p)
                     len_tail = calc_tailing(
@@ -428,13 +428,15 @@ rule analyze_isomir:
                                 best_matching_mirna)
                             continue
                     # calculation of nt frequencies at each position
+
                     nt_offset = seq_index_5p - consensus_index_5p
                     for index, nt in enumerate(seq):
-                        freq_nt[nt][index - nt_offset] += num_reads
+                        freq_nt_all[mirna][nt][index - nt_offset] += num_reads
                         for nt2 in ['A', 'C', 'G', 'T', 'N']:
-                            if nt2!=nt and (freq_nt[nt] is None or freq_nt[
-                                nt2][index - nt_offset] is None):
-                                freq_nt[nt2][index - nt_offset] = 0
+                            if nt2!=nt and (freq_nt_all[mirna][nt] is None or freq_nt_all[
+                                mirna][nt2][index - nt_offset] is None):
+                                freq_nt_all[mirna][nt2][index - nt_offset] = 0
+
                     # add to display queue
                     if mirna in table_out:
                         table_out[mirna].append([mirna, seq, len_read, num_reads,
@@ -449,15 +451,17 @@ rule analyze_isomir:
                     for motif, value in dict_mirna_consensus_nonamb.items():
                         mirna = value[0]
                         consensus = value[1]
-                        ##table_out = []
-                        freq_nt = co.defaultdict(lambda: co.defaultdict(int))
+
+                        if mirna not in freq_nt_all.keys():
+                            freq_nt_all[mirna] = co.defaultdict(
+                                lambda: co.defaultdict(int))
+
                         ##logging.debug("Start motif: " + motif + ' mirna: '
                         # + mirna)
 
                         if not contains_motif(seq, motif):
                             continue
 
-                        ##num_reads = int(line.rpartition(' ')[0])
                         # ascertain sequences pulled in by several miRNA motifs
                         has_other = other_motifs_pulled_seq(
                             dict_mirna_consensus, line, motif, motif_list)
@@ -473,8 +477,6 @@ rule analyze_isomir:
                         seq_end_5p = seq[:seq_index_5p]
 
                         # calculation of single-statistics
-                        ##ratio = float(num_reads)
-                        ##len_read = len(seq)
                         len_trim = calc_trimming(seq_end_3p,
                                                  consensus_end_3p)
                         len_tail = calc_tailing(
@@ -524,15 +526,17 @@ rule analyze_isomir:
                                                         'mirna: ' +
                                     best_matching_mirna)
                                 continue
+
                         # calculation of nt frequencies at each position
                         nt_offset = seq_index_5p - consensus_index_5p
                         for index, nt in enumerate(seq):
-                            freq_nt[nt][index - nt_offset] += num_reads
+                            freq_nt_all[mirna][nt][index - nt_offset] += num_reads
                             for nt2 in ['A', 'C', 'G', 'T', 'N']:
                                 if nt2 != nt and (
-                                        freq_nt[nt] is None or freq_nt[
-                                    nt2][index - nt_offset] is None):
-                                    freq_nt[nt2][index - nt_offset] = 0
+                                        freq_nt_all[mirna][nt] is None or freq_nt_all[
+                                    mirna][nt2][index - nt_offset] is None):
+                                    freq_nt_all[mirna][nt2][index - nt_offset] = 0
+
                         # add to display queue
                         if mirna in table_out:
                             table_out[mirna].append(
@@ -548,15 +552,17 @@ rule analyze_isomir:
                     for motif, value in dict_mirna_consensus_nonamb.items():
                         mirna = value[0]
                         consensus = value[1]
-                        ##table_out = []
-                        freq_nt = co.defaultdict(lambda: co.defaultdict(int))
+
+                        if mirna not in freq_nt_all.keys():
+                            freq_nt_all[mirna] = co.defaultdict(
+                                lambda: co.defaultdict(int))
+
                         ##logging.debug("Start motif: " + motif + ' mirna: '
                         # + mirna)
 
                         if motif not in seq:
                             continue
 
-                        ##num_reads = int(line.rpartition(' ')[0])
                         # ascertain sequences pulled in by several miRNA motifs
                         has_other = other_motifs_pulled_seq(
                             dict_mirna_consensus, line, motif, motif_list)
@@ -572,8 +578,6 @@ rule analyze_isomir:
                         seq_end_5p = seq[:seq_index_5p]
 
                         # calculation of single-statistics
-                        ##ratio = float(num_reads)
-                        ##len_read = len(seq)
                         len_trim = calc_trimming_nonamb(seq_end_3p,
                                                  consensus_end_3p)
                         len_tail = calc_tailing(
@@ -623,15 +627,17 @@ rule analyze_isomir:
                                                         'mirna: ' +
                                     best_matching_mirna)
                                 continue
+
                         # calculation of nt frequencies at each position
                         nt_offset = seq_index_5p - consensus_index_5p
                         for index, nt in enumerate(seq):
-                            freq_nt[nt][index - nt_offset] += num_reads
+                            freq_nt_all[mirna][nt][index - nt_offset] += num_reads
                             for nt2 in ['A', 'C', 'G', 'T', 'N']:
                                 if nt2 != nt and (
-                                        freq_nt[nt] is None or freq_nt[
-                                    nt2][index - nt_offset] is None):
-                                    freq_nt[nt2][index - nt_offset] = 0
+                                        freq_nt_all[mirna][nt] is None or freq_nt_all[
+                                    mirna][nt2][index - nt_offset] is None):
+                                    freq_nt_all[mirna][nt2][index - nt_offset] = 0
+
                         # add to display queue
                         if mirna in table_out:
                             table_out[mirna].append(
@@ -648,7 +654,6 @@ rule analyze_isomir:
         for motif, value in dict_mirna_consensus.items():
             mirna = value[0]
             consensus = value[1]
-            freq_nt = co.defaultdict(lambda: co.defaultdict(int))
             if mirna not in table_out:
                 continue
             table_out_mirna = table_out[mirna]
@@ -677,7 +682,7 @@ rule analyze_isomir:
             # calculate ratio
             sequence_info['RATIO'] = sequence_info['READS'].apply(
                 lambda x: round(100 * x / total_reads, 2))
-            nucleotide_dist = pd.DataFrame(freq_nt)
+            nucleotide_dist = pd.DataFrame(freq_nt_all[mirna])
             nucleotide_dist['MIRNA'] = mirna
             for base in acgtn:
                 if base not in nucleotide_dist:
