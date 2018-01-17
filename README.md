@@ -13,7 +13,7 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 * Make sure you have [Miniconda](http://conda.pydata.org/docs/install/quick.html) installed
 
 ## Installation
-1. Download repository: `git clone https://github.com/kevchn/quagmir`
+1. Download repository: `git clone https://github.com/Gu-Lab-RBL-NCI/QuagmiR`
 2. Go into local quagmir folder: `cd quagmir`
 3. Install Python dependencies: `conda env create -f environment.yml`
 
