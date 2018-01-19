@@ -816,11 +816,9 @@ rule analyze_isomir:
         if config['display_sequence_info'] and not first_dsi:
             with open(output[1], 'a') as out:
                 sequence_info_all[
-                    'CPM'] = sequence_info_all['READS'] / sequence_info_all[
-                    'READS'].sum() * float(10 ** 6)
+                    'CPM'] = sequence_info_all['READS'] / total_reads_in_sample * float(10 ** 6)
                 sequence_info_all[
-                    'RPKM'] = sequence_info_all['READS'] / sequence_info_all[
-                    'LEN_READ'] / total_reads_in_sample * float(10 ** 9)
+                    'RPKM'] = sequence_info_all['CPM'] / sequence_info_all['LEN_READ'] * float(10 ** 3)
                 sequence_info_all = sequence_info_all[["MIRNA",
                                                        "SEQUENCE",
                                                        "LEN_READ",
