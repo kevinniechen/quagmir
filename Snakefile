@@ -7,7 +7,6 @@ Aim: Python-based isomiR quantification and analysis pipeline.
 Run: snakemake
 """
 
-
 import glob
 import collections as co
 import numpy as np
@@ -17,101 +16,10 @@ import logging
 from weighted_levenshtein import lev
 from Bio import SeqIO
 
-###############################################################################
+from modules.isomir import *
 
 TIMESTAMP = time.strftime('%d-%b-%Y@%I:%M:%S%p')
 SAMPLES = [os.path.basename(f) for f in glob.glob('data/*')]
-
-###############################################################################
-
-base_ords = (A, C, G, T, R, Y, S, W, K, M, B, D, H, V,
-         N) = (65, 67, 71, 84, 82, 89, 83, 87, 75, 77, 66, 68, 72, 86, 78)
-base_ords = set(base_ords)
-fastq_ords = {A, C, G, T, N}
-acgt = ["A", "C", "G", "T"]
-acgtn = ["A", "C", "G", "T", "N"]
-acgt_ords = {A, C, G, T}
-fastq_bases = {"A", "C", "G", "T", "N"}
-all_bases = {"A", "C", "G", "T", "N", "R", "Y", "S", "W", "K", "M", "B", "D",
-             "H", "V"}
-ambiguous_letters = {"N", "R", "Y", "S", "W", "K", "M", "B", "D", "H", "V"}
-comparison_ord = dict([(A, {A}), (C, {C}), (G, {G}), (T, {T}), (R, {A, G}),
-                       (Y, {C, T}), (S, {C, G}), (W, {A, T}), (K, {G, T}),
-                       (M, {A, C}), (B, {C, G, T}), (D, {A, G, T}),
-                       (H, {A, C, T}), (V, {A, C, G})])
-comparison = dict([('A', {'A', 'N'}), ('C', {'C', 'N'}), ('G', {'G', 'N'}),
-                   ('T', {'T', 'N'}), ('R', {'A', 'G', 'N'}),
-                   ('Y', {'C', 'T', 'N'}), ('S', {'C', 'G', 'N'}),
-                   ('W', {'A', 'T', 'N'}), ('K', {'G', 'T', 'N'}),
-                   ('M', {'A', 'C', 'N'}), ('B', {'C', 'G', 'T', 'N'}),
-                   ('D', {'A', 'G', 'T', 'N'}), ('H', {'A', 'C', 'T', 'N'}),
-                   ('V', {'A', 'C', 'G', 'N'}),
-                   ('N', {'A', 'C', 'G', 'T', 'N', 'R', 'Y', 'S', 'W', 'K',
-                          'M', 'B', 'D', 'H', 'V', 'N'})])
-
-
-def compare_chars(fastq, consensus):
-    return fastq in comparison[consensus]
-
-
-def compare_strings(fastq, consensus):
-    fastq_len = len(fastq)
-    if fastq_len != len(consensus):
-        return False
-    for i in range(fastq_len):
-        if not compare_chars(fastq[i], consensus[i]):
-            return False
-    return True
-
-
-def calc_trimming(seq_end, consensus_end):
-    for i in range(0, min(len(seq_end), len(consensus_end))):
-        if not compare_chars(seq_end[i], consensus_end[i]):
-            return len(consensus_end) - i
-    if len(seq_end) < len(consensus_end):
-        return len(consensus_end) - len(seq_end)
-    return 0
-
-
-def calc_trimming_nonamb(seq_end, consensus_end):
-    for i in range(0, min(len(seq_end), len(consensus_end))):
-        if seq_end[i]!= consensus_end[i]:
-            return len(consensus_end) - i
-    if len(seq_end) < len(consensus_end):
-        return len(consensus_end) - len(seq_end)
-    return 0
-
-
-def calc_trimming_5p(seq_end, consensus_end):
-    for i in range(0, min(len(seq_end), len(consensus_end))):
-        if not compare_chars(seq_end[len(seq_end) - i - 1], consensus_end[len(
-                consensus_end) - i - 1]):
-            return len(consensus_end) - i
-    if len(seq_end) < len(consensus_end):
-        return len(consensus_end) - len(seq_end)
-    return 0
-
-
-def calc_trimming_5p_nonamb(seq_end, consensus_end):
-    for i in range(0, min(len(seq_end), len(consensus_end))):
-        if seq_end[len(seq_end) - i - 1] != consensus_end[len(
-                consensus_end) - i - 1]:
-            return len(consensus_end) - i
-    if len(seq_end) < len(consensus_end):
-        return len(consensus_end) - len(seq_end)
-    return 0
-
-
-def calc_tailing(seq_end, consensus_end, trim_len):
-    return len(seq_end) - len(consensus_end) + trim_len
-
-
-def get_tailing_seq(seq, tail_len):
-    if tail_len is not 0:
-        return seq[-tail_len:]
-    else:
-        return '-'
-
 
 def motif_consensus_to_dict(file):
     ordered_dict = co.OrderedDict()
@@ -139,16 +47,40 @@ def other_motifs_pulled_seq(dict_mirna_consensus, line, motif, motif_list):
     return annotation
 
 
-def input_name(prefix, sufix):
+def input_name(prefix, suffix, samples):
     answer = []
-    for sample in SAMPLES:
-        answer.append(prefix + sample + sufix)
+    for sample in samples:
+        answer.append(prefix + sample + suffix)
     return answer
 
 
-def sample_name(input, prefix, sufix):
-    return input[len(prefix):-len(sufix)]
+def sample_name(input, prefix, suffix):
+    return input[len(prefix):-len(suffix)]
 
+base_ords = (A, C, G, T, R, Y, S, W, K, M, B, D, H, V,
+         N) = (65, 67, 71, 84, 82, 89, 83, 87, 75, 77, 66, 68, 72, 86, 78)
+base_ords = set(base_ords)
+fastq_ords = {A, C, G, T, N}
+acgt = ["A", "C", "G", "T"]
+acgtn = ["A", "C", "G", "T", "N"]
+acgt_ords = {A, C, G, T}
+fastq_bases = {"A", "C", "G", "T", "N"}
+all_bases = {"A", "C", "G", "T", "N", "R", "Y", "S", "W", "K", "M", "B", "D",
+             "H", "V"}
+ambiguous_letters = {"N", "R", "Y", "S", "W", "K", "M", "B", "D", "H", "V"}
+comparison_ord = dict([(A, {A}), (C, {C}), (G, {G}), (T, {T}), (R, {A, G}),
+                       (Y, {C, T}), (S, {C, G}), (W, {A, T}), (K, {G, T}),
+                       (M, {A, C}), (B, {C, G, T}), (D, {A, G, T}),
+                       (H, {A, C, T}), (V, {A, C, G})])
+comparison = dict([('A', {'A', 'N'}), ('C', {'C', 'N'}), ('G', {'G', 'N'}),
+                   ('T', {'T', 'N'}), ('R', {'A', 'G', 'N'}),
+                   ('Y', {'C', 'T', 'N'}), ('S', {'C', 'G', 'N'}),
+                   ('W', {'A', 'T', 'N'}), ('K', {'G', 'T', 'N'}),
+                   ('M', {'A', 'C', 'N'}), ('B', {'C', 'G', 'T', 'N'}),
+                   ('D', {'A', 'G', 'T', 'N'}), ('H', {'A', 'C', 'T', 'N'}),
+                   ('V', {'A', 'C', 'G', 'N'}),
+                   ('N', {'A', 'C', 'G', 'T', 'N', 'R', 'Y', 'S', 'W', 'K',
+                          'M', 'B', 'D', 'H', 'V', 'N'})])
 
 configfile:
     'config.yaml'
@@ -163,7 +95,6 @@ if config['ambiguous_letters']:
 else:
     def find_in_string(str1, str2):
         return str1.find(str2)
-
 
 def contains_motif(line, motif):
     if find_in_string(line, motif) == -1:
@@ -427,8 +358,8 @@ rule analyze_isomir:
                                 'Skipped (' + seq + ') better matches mirna: ' +
                                 best_matching_mirna)
                             continue
-                    # calculation of nt frequencies at each position
 
+                    # calculation of nt frequencies at each position
                     nt_offset = seq_index_5p - consensus_index_5p
                     for index, nt in enumerate(seq):
                         freq_nt_all[mirna][nt][index - nt_offset] += num_reads
@@ -650,7 +581,7 @@ rule analyze_isomir:
                                  ratio, len_trim, len_tail, seq_tail,
                                  vari_5p, has_other, dist]]
 
-    # SECTION | MOVE STATISTICS INTO DATAFRAME ################################
+        # SECTION | MOVE STATISTICS INTO DATAFRAME ################################
         for motif, value in dict_mirna_consensus.items():
             mirna = value[0]
             consensus = value[1]
@@ -843,9 +774,9 @@ rule analyze_isomir:
 
 rule group_outputs:
     input:
-        input_name("results/", ".isomir.tsv"),
-        input_name("results/", ".isomir.sequence_info.tsv"),
-        input_name("results/", ".isomir.nucleotide_dist.tsv")
+        input_name("results/", ".isomir.tsv", SAMPLES),
+        input_name("results/", ".isomir.sequence_info.tsv", SAMPLES),
+        input_name("results/", ".isomir.nucleotide_dist.tsv", SAMPLES)
     output:
         'group_results/' + config['group_output_name'] + '.isomir.tsv',
         'group_results/' + config['group_output_name'] + '.isomir.sequence_info.tsv',
@@ -854,7 +785,7 @@ rule group_outputs:
         os.path.join("logs/", TIMESTAMP)
     run:
         prefix = "results/"
-        sufix = [".isomir.tsv",
+        suffix = [".isomir.tsv",
                  ".isomir.sequence_info.tsv",
                  ".isomir.nucleotide_dict.tsv"]
         condition = [config['display_group_output'] and config['display_summary'],
@@ -878,7 +809,7 @@ rule group_outputs:
                                 logging.warning("File " + inp + " is empty")
                                 continue
                             df['SAMPLE'] = sample_name(
-                            input[i*len(SAMPLES)], prefix, sufix[i])
+                            input[i*len(SAMPLES)], prefix, suffix[i])
                             cols = df.columns.tolist()
                             cols = cols[-1:] + cols[:-1]
                             df = df[cols]
@@ -888,7 +819,7 @@ rule group_outputs:
                             except:
                                 logging.warning("File " + inp + " is empty")
                                 continue
-                            df_rest['SAMPLE'] = sample_name(inp, prefix, sufix[i])
+                            df_rest['SAMPLE'] = sample_name(inp, prefix, suffix[i])
                             cols = df_rest.columns.tolist()
                             cols = cols[-1:] + cols[:-1]
                             df_rest = df_rest[cols]

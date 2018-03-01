@@ -1,7 +1,3 @@
-![alt tag](https://img.shields.io/github/issues/kevchn/quagmir.svg)
-![alt tag](https://img.shields.io/wercker/ci/wercker/docs.svg)
-![alt tag](https://img.shields.io/dub/l/vibe-d.svg)
-
 # QuagmiR
 A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 
@@ -14,7 +10,7 @@ A python-based miRNA sequencing pipeline for isomiR quantification and analysis
 
 ## Installation
 1. Download repository: `git clone https://github.com/Gu-Lab-RBL-NCI/QuagmiR`
-2. Go into local quagmir folder: `cd quagmir`
+2. Go into your quagmir/ folder: `cd quagmir`
 3. Install Python dependencies: `conda env create -f environment.yml`
 
 ## Quickstart
@@ -92,16 +88,9 @@ Quagmir also has an optional flag (off by default) to skip reads that:
 
 **Biologically, a read can only belong to one miRNA**
 
-## Notes
+## Other Notes
 The step of collapsing sample files takes the longest time, but once the samples are collapsed, and you need to re-run the pipeline, the pipeline will automatically start from the collapsed files and take a far shorter amount of time.
 
 To save time you may consider to skip distance metric (weighted-levenstein distance) which is calculated on group results.
 
 Output will be a **sample.fastq.results.txt** file for each sample in the **results/** folder and grouped results if multiple files are provided. All resulting files are in tabular (TSV) format.
-
-## Planned features
-- Have a provided primary miRNA transcript for each miRNA either in
-motif-consensus as well as gen-uniq-subseq, or have it pre-provided in local
-files. Then implement features to smartly filter out reads that are not
-isomiRs of a miRNA because they have statistically improbable behavior (e.g
-5p non-templating addition) or sequencing errors.
