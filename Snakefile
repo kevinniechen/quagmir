@@ -1189,10 +1189,11 @@ rule gff_file:
                                            str(row['START_G']) + '-' +
                                            str(row['END_G']), axis=1)
         gff['UID'] = gff['SEQUENCE'].apply(get_id)
-        no_paralogs = gff.groupby(['MIRNA', 'SEQUENCE']).nunique()['POS']
+        no_paralogs = gff.groupby(['MIRNA', 'SEQUENCE']).apply(
+            lambda x: x.POS.nunique())
         gff['NUMBER_OF_PARALOGS'] = gff.apply(lambda row: no_paralogs[
             row['MIRNA'], row['SEQUENCE']], axis=1)
-        no_hits = gff.groupby(['SEQUENCE']).nunique()['POS']
+        no_hits = gff.groupby(['SEQUENCE']).apply(lambda x: x.POS.nunique())
         gff['HITS'] = gff.apply(lambda row: no_hits[row['SEQUENCE']], axis=1)
         gff['ATTRIBUTES'] = gff.apply(lambda row: ';'.join([
             'UID=' + row['UID'],
