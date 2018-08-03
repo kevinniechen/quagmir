@@ -597,7 +597,7 @@ rule collapse_fastq:
 rule analyze_isomir:
     input:
         collapsed_fasta='collapsed/{A}.collapsed',
-        input_files='data/{A}',
+        input_files=input_folder+'{A}',
         motif_consensus=config['motif_consensus_file']
     output:
         'results/{A}.isomir.tsv',
@@ -1136,15 +1136,15 @@ rule analyze_isomir:
 
 rule gff_file:
     input:
-        input_sample='data/{A}',
+        input_sample=input_folder+'{A}',
         sequence_info='results/{A}.isomir.sequence_info.tsv',
-        reference_info=config['reference_info']
+        reference_file=config['reference_file']
     output:
         'results/{A}.gff'
     log:
         os.path.join("logs/", TIMESTAMP)
     run:
-        ref = pd.read_csv(input.reference_info, sep='\t')[['MIRNA',
+        ref = pd.read_csv(input.reference_file, sep='\t')[['MIRNA',
                                                      'SEQUENCE',
                                                      'MOTIF.13',
                                                      'CHROMOSOME',
