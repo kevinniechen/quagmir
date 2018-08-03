@@ -581,7 +581,8 @@ rule all:
         expand('results/{A}.isomir.sequence_info.tsv', A=SAMPLES),
         expand('group_results/' + config['group_output_name'] + '.isomir.tsv'),
         expand('group_results/' + config['group_output_name'] + '.isomir.sequence_info.tsv'),
-        expand('group_results/' + config['group_output_name'] + '.isomir.nucleotide_dist.tsv')
+        expand('group_results/' + config['group_output_name'] + '.isomir.nucleotide_dist.tsv'),
+        expand('results/{A}.gff', A=SAMPLES)
 
 
 rule collapse_fastq:
@@ -1214,7 +1215,7 @@ rule gff_file:
         header += '## source-ontology: ' + config['source_ontology'].rstrip() + '\n'
         header += '## COLDATA: ' + fastq_file + '\n'
 
-        with open(output[0], 'w') as w:
+        with open(output[0], 'a') as w:
             w.write(header)
             gff.to_csv(w, index=False, sep='\t')
 
