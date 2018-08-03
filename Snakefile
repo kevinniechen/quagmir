@@ -1136,9 +1136,9 @@ rule analyze_isomir:
 
 rule gff_file:
     input:
-        fastq_file = 'data/{A}',
-        sequence_info = 'results/{A}.isomir.sequence_info.tsv',
-        reference_info = config['reference_info']
+        fastq_file='data/{A}',
+        sequence_info='results/{A}.isomir.sequence_info.tsv',
+        reference_info=config['reference_info']
     output:
         'results/{A}.gff'
     log:
