@@ -1136,7 +1136,7 @@ rule analyze_isomir:
 
 rule gff_file:
     input:
-        fastq_file='data/{A}',
+        input_sample='{A}',
         sequence_info='results/{A}.isomir.sequence_info.tsv',
         reference_info=config['reference_info']
     output:
@@ -1144,7 +1144,7 @@ rule gff_file:
     log:
         os.path.join("logs/", TIMESTAMP)
     run:
-        ref = pd.read_csv(reference_info, sep='\t')[['MIRNA',
+        ref = pd.read_csv(input.reference_info, sep='\t')[['MIRNA',
                                                      'SEQUENCE',
                                                      'MOTIF.13',
                                                      'CHROMOSOME',
@@ -1162,7 +1162,7 @@ rule gff_file:
         ref['MOTIF_START'] = ref.apply(lambda row: row['X.COORDINATE'] + row[
             'PRI.SEQUENCE'].index(row['MOTIF.13']), axis=1)
 
-        res = pd.read_csv(sequence_info, sep='\t')[["MIRNA",
+        res = pd.read_csv(input.sequence_info, sep='\t')[["MIRNA",
                                                     "SEQUENCE",
                                                     "LEN_READ",
                                                     "READS",
@@ -1213,7 +1213,7 @@ rule gff_file:
 
         header = '## VERSION: 1.0\n'
         header += '## source-ontology: ' + config['source_ontology'].rstrip() + '\n'
-        header += '## COLDATA: ' + fastq_file + '\n'
+        header += '## COLDATA: ' + input.input_sample + '\n'
 
         with open(output[0], 'a') as w:
             w.write(header)
