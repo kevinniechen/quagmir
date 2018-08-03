@@ -1136,7 +1136,7 @@ rule analyze_isomir:
 
 rule gff_file:
     input:
-        input_sample='{A}',
+        input_sample='data/{A}',
         sequence_info='results/{A}.isomir.sequence_info.tsv',
         reference_info=config['reference_info']
     output:
