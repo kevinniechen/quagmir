@@ -450,11 +450,60 @@ def contains_motif(line, motif):
         return False
     return True
 
+
 def contains_ambiguous_letters(str):
     for letter in ambiguous_letters:
         if str.find(letter) != -1:
             return True
     return False
+
+
+def variant(row):
+    result = ''
+    reference = row['REFERENCE']
+    sequence = row['SEQUENCE']
+    var_5p = int(row['MIRNA_START'] - row['START_G'])
+    var_3p = int(row['END_G'] - row['MIRNA_END'])
+    comp_start = 0
+    comp_end = len(reference)
+    if var_5p > 0:
+        result += 'iso_5p:+' + str(var_5p) + ','
+    elif var_5p < 0:
+        result += 'iso_5p:' + str(var_5p) + ','
+        comp_start = -var_5p
+    if var_3p > 0:
+        result += 'iso_3p:+' + str(var_3p) + ','
+    elif var_3p < 0:
+        result += 'iso_3p:' + str(var_3p) + ','
+        comp_end += var_3p
+    int_1_s = max(comp_start, 2)
+    int_1_e = min(comp_end, 8)
+    int_2_s = max(comp_start, 9)
+    int_2_e = min(comp_end, 13)
+    int_3_s = max(comp_start, 13)
+    int_3_e = min(comp_end, 18)
+    if sequence[int_1_s + var_5p:int_1_s + var_5p] != reference[
+                                                      int_1_s:int_1_e]:
+        result += 'iso_snp_seed,'
+    if var_5p >= -8 and 8 + var_5p < len(sequence) and sequence[
+        8 + var_5p] != reference[8]:
+        result += 'iso_snp_central_offset,'
+    if sequence[int_2_s + var_5p:int_2_e + var_5p] != reference[
+                                                      int_2_s:int_2_e]:
+        result += 'iso_snp_central,'
+    if sequence[int_3_s + var_5p:int_3_e + var_5p] != reference[
+                                                      int_3_s:int_3_e]:
+        result += 'iso_snp_central_supp,'
+    if comp_start <= 2 and sequence[
+                           comp_start + var_5p:2 + var_5p] != reference[
+                                                              comp_start:2]:
+        result += 'iso_snp,'
+    elif sequence[18 + var_5p:comp_end + var_5p] != reference[18:comp_end]:
+        result += 'iso_snp,'
+    if result:
+        return result[:-1]
+    return 'NA'
+
 
 if config['edit_distance_3p'] == -1:
     if config['edit_distance_5p'] == -1:
@@ -1195,10 +1244,12 @@ rule gff_file:
             row['MIRNA'], row['SEQUENCE']], axis=1)
         no_hits = gff.groupby(['SEQUENCE']).apply(lambda x: x.POS.nunique())
         gff['HITS'] = gff.apply(lambda row: no_hits[row['SEQUENCE']], axis=1)
+        gff['VARIANT'] = gff.apply(variant, axis=1)
         gff['ATTRIBUTES'] = gff.apply(lambda row: '; '.join([
             'UID=' + row['UID'],
             'Name=' + row['MIRNA'],
             'Parent=' + row['PRIMIRNA'],
+            'Variant=' + row['VARIANT'],
             'Hits=' + str(row['HITS']),
             'Genomic=' + row['POS'],
             'Expression=' + str(row['READS']),
