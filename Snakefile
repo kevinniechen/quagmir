@@ -1195,14 +1195,14 @@ rule gff_file:
             row['MIRNA'], row['SEQUENCE']], axis=1)
         no_hits = gff.groupby(['SEQUENCE']).apply(lambda x: x.POS.nunique())
         gff['HITS'] = gff.apply(lambda row: no_hits[row['SEQUENCE']], axis=1)
-        gff['ATTRIBUTES'] = gff.apply(lambda row: ';'.join([
+        gff['ATTRIBUTES'] = gff.apply(lambda row: '; '.join([
             'UID=' + row['UID'],
             'Name=' + row['MIRNA'],
             'Parent=' + row['PRIMIRNA'],
-            'Filter=PASS',
             'Hits=' + str(row['HITS']),
-            'Expression=' + str(row['READS']),
             'Genomic=' + row['POS'],
+            'Expression=' + str(row['READS']),
+            'Filter=Pass',
             'sequence=' + row['SEQUENCE'],
             'number_of_paralogs=' + str(row['NUMBER_OF_PARALOGS'])
         ]), axis=1)
