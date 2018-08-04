@@ -1210,6 +1210,10 @@ rule gff_file:
         ref = ref.dropna()
         ref['MOTIF_START'] = ref.apply(lambda row: row['X.COORDINATE'] + row[
             'PRI.SEQUENCE'].index(row['MOTIF.13']), axis=1)
+        ref['MIRNA_START'] = ref.apply(lambda row: row['X.COORDINATE'] + row[
+            'PRI.SEQUENCE'].index(row['REFERENCE']), axis=1)
+        ref['MIRNA_END'] = ref.apply(
+            lambda row: row['MIRNA_START'] + len(row['REFERENCE']), axis=1)
 
         res = pd.read_csv(input.sequence_info, sep='\t')[["MIRNA",
                                                     "SEQUENCE",
