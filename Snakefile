@@ -482,7 +482,7 @@ def variant(row):
     int_2_e = min(comp_end, 13)
     int_3_s = max(comp_start, 13)
     int_3_e = min(comp_end, 18)
-    if sequence[int_1_s + var_5p:int_1_s + var_5p] != reference[
+    if sequence[int_1_s + var_5p:int_1_e + var_5p] != reference[
                                                       int_1_s:int_1_e]:
         result += 'iso_snp_seed,'
     if var_5p >= -8 and 8 + var_5p < len(sequence) and sequence[
