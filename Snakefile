@@ -1273,7 +1273,7 @@ rule gff_file:
 
         with open(output[0], 'a') as w:
             w.write(header)
-            gff.to_csv(w, index=False, sep='\t')
+            gff.to_csv(w, index=False, sep='\t', header=False)
 
 
 
