@@ -17,7 +17,11 @@ ambiguous_letters: True
 destructive_motif_pull: False
 
 # INPUT
+data: 'data' # path to folder containing input files
 motif_consensus_file: 'motif-consensus.fa'
+reference_file: 'miRBase21-master.tsv'
+mirbase_version: '21' # version of miRBase being used for reference files
+source_ontology: 'miRBase v21 doi:10.25504/fairsharing.hmgte8'
 
 # OUTPUT
 group_output_name: 'cohort1'
