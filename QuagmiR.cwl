@@ -1,7 +1,7 @@
 {
   "sbg:projectName": "QuagmiR - dev",
   "sbg:toolkit": "QuagmiR",
-  "sbg:modifiedOn": 1533354428,
+  "sbg:modifiedOn": 1533432041,
   "sbg:validationErrors": [],
   "baseCommand": [
     "/bin/bash",
@@ -11,7 +11,7 @@
   "sbg:modifiedBy": "nikola_tesic",
   "sbg:image_url": null,
   "successCodes": [],
-  "sbg:latestRevision": 49,
+  "sbg:latestRevision": 52,
   "outputs": [
     {
       "type": [
@@ -159,6 +159,162 @@
       "description": "GFF."
     }
   ],
+  "sbg:categories": [
+    "miRNA"
+  ],
+  "sbg:license": "MIT License",
+  "sbg:revisionNotes": "minor description changes",
+  "sbg:createdOn": 1516888498,
+  "temporaryFailCodes": [],
+  "sbg:sbgMaintained": false,
+  "sbg:job": {
+    "allocatedResources": {
+      "cpu": 4,
+      "mem": 1000
+    },
+    "inputs": {
+      "mirbase_version": "mirbase_version-string-value",
+      "insertion_score": 9.969961420283253,
+      "min_ratio": 8.293022266993587,
+      "collapsed": [
+        {
+          "secondaryFiles": [],
+          "class": "File",
+          "size": 0,
+          "path": "/path/to/fastq_file-1.ext.collapsed"
+        },
+        {
+          "secondaryFiles": [],
+          "class": "File",
+          "size": 0,
+          "path": "/path/to/fastq_file-2.ext.not_really"
+        },
+        {
+          "secondaryFiles": [],
+          "class": "File",
+          "size": 0,
+          "path": "/path/to/fastq_file-2.ext.collapsed"
+        }
+      ],
+      "substitution_score": {
+        "ac": 7.032371894121999,
+        "ca": 5.907251526966097,
+        "ct": 10.382560524506955,
+        "at": 7.07069141380792,
+        "gt": 0.05617499809570303,
+        "tg": 9.80306639631734,
+        "ga": 10.152746571136447,
+        "tc": 5.395801837155783,
+        "gc": 5.90324132538586,
+        "ta": 5.305421054615811,
+        "cg": 8.62896289151937,
+        "ag": 9.113533436056201
+      },
+      "motif_consensus_file": {
+        "secondaryFiles": [],
+        "class": "File",
+        "size": 0,
+        "path": "/path/to/motif_consensus_file.ext"
+      },
+      "destructive_motif_pull": false,
+      "group_output_name": "",
+      "edit_distance_treshold_5p": 10,
+      "edit_distance_treshold_3p": 6,
+      "source_ontology": "source_ontology-string-value",
+      "number_of_threads": null,
+      "min_read": 8,
+      "ambiguous_letters": true,
+      "fastq_files": [
+        {
+          "secondaryFiles": [],
+          "class": "File",
+          "metadata": {
+            "sample_group": "test1"
+          },
+          "size": 0,
+          "path": "/path/to/fastq_file-1.ext"
+        },
+        {
+          "secondaryFiles": [],
+          "class": "File",
+          "metadata": {
+            "sample_group": "test2"
+          },
+          "size": 0,
+          "path": "/path/to/fastq_file-2.ext"
+        },
+        {
+          "secondaryFiles": [],
+          "class": "File",
+          "size": 0,
+          "path": "/path/to/fastq_file-3.ext"
+        },
+        {
+          "secondaryFiles": [],
+          "class": "File",
+          "size": 0,
+          "path": "/path/to/fastq_file-4.ext"
+        }
+      ],
+      "reference_file": {
+        "size": 0,
+        "path": "/path/to/reference_file.ext",
+        "class": "File",
+        "secondaryFiles": []
+      },
+      "display_group_output": true,
+      "deletion_score": 1.9293315992862135
+    }
+  },
+  "cwlVersion": "sbg:draft-2",
+  "id": "https://api.sbgenomics.com/v2/apps/nikola_tesic/quagmir-dev/quagmir/52/raw/",
+  "sbg:cmdPreview": "/bin/bash run.sh",
+  "sbg:links": [
+    {
+      "label": "QuagmiR Homepage",
+      "id": "https://github.com/duxan/quagmir"
+    },
+    {
+      "label": "QuagmiR Source Code",
+      "id": "https://github.com/duxan/quagmir"
+    },
+    {
+      "label": "QuagmiR Download",
+      "id": "https://github.com/duxan/quagmir"
+    },
+    {
+      "label": "QuagmiR Documentation",
+      "id": "https://github.com/duxan/quagmir"
+    }
+  ],
+  "hints": [
+    {
+      "value": {
+        "script": "{\n  var nthreads = $job.inputs.number_of_threads || [].concat($job.inputs.fastq_files).length\n  if(nthreads > 36) nthreads = 36\n  return(nthreads)\n}",
+        "class": "Expression",
+        "engine": "#cwl-js-engine"
+      },
+      "class": "sbg:CPURequirement"
+    },
+    {
+      "value": 1000,
+      "class": "sbg:MemRequirement"
+    },
+    {
+      "dockerPull": "images.sbgenomics.com/nikola_tesic/quagmir:adding_gff_13",
+      "dockerImageId": "",
+      "class": "DockerRequirement"
+    }
+  ],
+  "label": "QuagmiR",
+  "arguments": [],
+  "sbg:project": "nikola_tesic/quagmir-dev",
+  "sbg:id": "nikola_tesic/quagmir-dev/quagmir/52",
+  "sbg:appVersion": [
+    "sbg:draft-2"
+  ],
+  "description": "**QuagmiR** is a python tool for mapping of miRNA sequences and detection and quantification of different isomiRs. For mapping, the tool searches for exact match in the conserved middle part of the miRNA sequence, and once the match is found it uses filtering based on other information to decide whether to discard the sequence or not. It uses FASTQ files with miRNA-Seq reads as input.\n\n**QuagmiR** requires the following input files and parameters:\n\n* **Input reads**: MiRNA-Seq reads in FASTQ format (gzipped input accepted). If multiple files are provided, all available threads on the instance will be used so the task's run time is made as short as possible by running **QuagmiR** on samples in parallel.\n\n* **Motif-consensus file**: Reference file containing names of miRNA sequences, their conserved parts and miRNA sequences themselves. For this, [motif_list_hsa.fa](https://cgc.sbgenomics.com/public/files/5a8dab554f0c3a81d19fca69/) can be used, which contains human miRNAs. Otherwise, any list of miRNAs can be used as **Reference file** as long as it adheres to the format of [motif_list_hsa.fa](https://cgc.sbgenomics.com/public/files/5a8dab554f0c3a81d19fca69/) (for example, if there is interest only in specific miRNAs, only those can be used as reference, and if FASTQ files belong to some non-human species, then reference file for that species is needed).\n\n* **Reference file**: Reference TSV containing additional information about miRNA references. Example file can be found on QuagmiR's github repo.\n\n*A list of **all inputs and parameters** with corresponding descriptions can be found at the end of the page.*\n\n### Common Use Cases\n\nMicroRNAs (abbreviated miRNAs) are small non-coding RNA molecules (containing about 22 nucleotides) found in plants, animals and some viruses, that have a function in RNA silencing and post-transcriptional regulation of gene expression. IsomiRs are sequences that have variations with respect to the reference MiRNA sequence.\n\nEach miRNA is considered to have a conserved part in the middle that is the same for all of its isomiRs. **QuagmiR** searches for that part in the input FASTQ file, and than chooses reads among those that pass the filtering thresholds (such as 3' and 5' ends filtering where the ends need to have smaller weighted Levenstein distance from the miRNA than the user defined threshold (which can be switched off altogether)).\n\nAfter filtering, for sequences that are aligned to multiple miRNA reads, the best alignment is chosen based on the total weighted Levenstein distance between them. This can be changed by setting the **Destructive motif pull** parameter to False. That way, all possible alignments will be outputted.\n\nAdditionally, as previously mentioned, different **Reference file**s can be chosen, so that they better fit a specific use-case (i.e. a subset of miRNA references contained in the **Reference file** we provide on the platform, so that only particular types of miRNA that are of interest are explored).\n\nAll these parameters, and several others that are described at the end of this page, provide the user with a wide range of possibilities to use this tool in. The tool can be used for general miRNA mapping and isomiR quantification, but it can be used for more specific needs as well by applying different filters, using different sets of miRNA references, turning the **Destructive motif pull** option on or off, etc.\n\n### Changes Introduced by Seven Bridges\n\n* Collapsed files can be used as an optional input, so for each FASTQ file that has it's COLLAPSED file, **QuagmiR** will skip the collapsing step, so the execution time can be shortened. This is useful when analyzing same input files with different tool options such as filtering thresholds, so the files are collapsed only the first time. If some of the input files have COLLAPSED files and some don't, COLLAPSED files will be created and outputed for the new input files.\n\n### Common Issues and Important Notes\n\n* At the moment, only **Reference file**s for human miRNA have been built and tested, so the tool can't be used on other species without first creating the **Reference file**, which requires information regarding that species' miRNA that may not be known yet (most notably, length and positions of conserved parts within the known miRNA sequences).\n\n### Performance Benchmarking\n\nIn the following table you can find estimates of running times and costs. All input files are FASTQ files containing miRNA-Seq reads. If not specified otherwise, number of threads for the tool will be set to be the same as number of input files, or 36 in case the number of files is greater than 36. The instance is set to either default c4.2xlarge, or, in case more threads are required, to the cheapest instance that has sufficient number of threads.\n\nExecution time depends on many factors, but the most important ones are size of input files and whether the **Ambiguous letters support** is turned on or not.\n\n*Cost can be significantly reduced by **spot instance** usage. Visit [knowledge center](https://docs.sevenbridges.com/docs/about-spot-instances) for more details.*         \n\n#####Example runs:\n\n| Experiment type | Input size | Ambiguous letters | Read length | Duration | Cost | Instance (AWS)| Instance type |\n|-----------------------|------------|-----------------|------------|-----------------|-------------|--------------|------------------|-------------|---------------|------------|\n| miRNA-Seq         | 1    | 864 MB     | No        | 15-30         | 17m   | $0.16            | c4.2xlarge      | On-demand        |\n| miRNA-Seq         | 1    | 864 MB     | Yes        | 15-30         | 1h 19m   | $0.73            | c4.2xlarge      | On-demand        |\n| miRNA-Seq         | 72     | 599MB - 872MB      | Yes        | 15-30         | 2h 19m   | $1.24            | c4.8xlarge      | On-demand        |\n\n### API Python Implementation\n\nThe tool's draft task can also be submitted via the **API**. In order to learn how to get your **Authentication token** and **API endpoint** for corresponding platform visit our [documentation](https://github.com/sbg/sevenbridges-python#authentication-and-configuration).\n\n```python\nfrom sevenbridges import Api\n\nauthentication_token, api_endpoint = \"enter_your_token\", \"enter_api_endpoint\"\napi = Api(token=authentication_token, url=api_endpoint)\n# Get project_id/workflow_id from your address bar. Example: https://igor.sbgenomics.com/u/your_username/project/tool\nproject_id, tool_id = \"your_username/project\", \"your_username/project/tool\"\n# Get file names from files in your project. Example: Names are taken from Data/Public Reference Files.\ninputs = {\n    'fastq_files': list(api.files.query(project=project_id, names=['miRNA_test_file.fastq'])), \n    'motif_consensus_file': api.files.query(project=project_id, names=['motif_list_hsa.fa'])[0]\n    'reference_file': api.files.query(project=project_id, names=['rmiRBase21-master.tsv'])[0]\n}\ntask = api.tasks.create(name='QuagmiR - API Example', project=project_id, app=tool_id, inputs=inputs, run=True)\n```\n\nInstructions for installing and configuring the API Python client, are provided on [github](https://github.com/sbg/sevenbridges-python#installation). For more information about using the API Python client, consult [sevenbridges-python documentation](http://sevenbridges-python.readthedocs.io/en/latest/). **More examples** are available [here](https://github.com/sbg/okAPI).\n\nAdditionally, [API R](https://github.com/sbg/sevenbridges-r) and [API Java](https://github.com/sbg/sevenbridges-java) clients are available. To learn more about using these API clients please refer to the [API R client documentation](https://sbg.github.io/sevenbridges-r/), and [API Java client documentation](https://docs.sevenbridges.com/docs/java-library-quickstart).\n\n### References\n\n[1] [Github repo](https://github.com/duxan/quagmir)\n\n[2] Authors and their contact: [Xavier Bofill De Ross](https://github.com/xbdr86), [Kevin Chen](https://github.com/kevchn), [Nikola Tesic](https://github.com/nikola-tesic), [Dusan Randjelovic](https://github.com/duxan)",
+  "sbg:createdBy": "nikola_tesic",
   "sbg:revisionsInfo": [
     {
       "sbg:modifiedBy": "nikola_tesic",
@@ -459,166 +615,28 @@
       "sbg:modifiedOn": 1533354428,
       "sbg:revision": 49,
       "sbg:revisionNotes": "test16"
+    },
+    {
+      "sbg:modifiedBy": "nikola_tesic",
+      "sbg:modifiedOn": 1533421640,
+      "sbg:revision": 50,
+      "sbg:revisionNotes": "test17"
+    },
+    {
+      "sbg:modifiedBy": "nikola_tesic",
+      "sbg:modifiedOn": 1533431900,
+      "sbg:revision": 51,
+      "sbg:revisionNotes": "minor description changes"
+    },
+    {
+      "sbg:modifiedBy": "nikola_tesic",
+      "sbg:modifiedOn": 1533432041,
+      "sbg:revision": 52,
+      "sbg:revisionNotes": "minor description changes"
     }
-  ],
-  "sbg:license": "MIT License",
-  "sbg:revisionNotes": "test16",
-  "sbg:createdOn": 1516888498,
-  "temporaryFailCodes": [],
-  "sbg:sbgMaintained": false,
-  "sbg:job": {
-    "allocatedResources": {
-      "cpu": 4,
-      "mem": 1000
-    },
-    "inputs": {
-      "mirbase_version": "mirbase_version-string-value",
-      "insertion_score": 9.969961420283253,
-      "min_ratio": 8.293022266993587,
-      "collapsed": [
-        {
-          "secondaryFiles": [],
-          "class": "File",
-          "size": 0,
-          "path": "/path/to/fastq_file-1.ext.collapsed"
-        },
-        {
-          "secondaryFiles": [],
-          "class": "File",
-          "size": 0,
-          "path": "/path/to/fastq_file-2.ext.not_really"
-        },
-        {
-          "secondaryFiles": [],
-          "class": "File",
-          "size": 0,
-          "path": "/path/to/fastq_file-2.ext.collapsed"
-        }
-      ],
-      "substitution_score": {
-        "ac": 7.032371894121999,
-        "ca": 5.907251526966097,
-        "ct": 10.382560524506955,
-        "at": 7.07069141380792,
-        "gt": 0.05617499809570303,
-        "tg": 9.80306639631734,
-        "ga": 10.152746571136447,
-        "tc": 5.395801837155783,
-        "gc": 5.90324132538586,
-        "ta": 5.305421054615811,
-        "cg": 8.62896289151937,
-        "ag": 9.113533436056201
-      },
-      "motif_consensus_file": {
-        "secondaryFiles": [],
-        "class": "File",
-        "size": 0,
-        "path": "/path/to/motif_consensus_file.ext"
-      },
-      "destructive_motif_pull": false,
-      "group_output_name": "",
-      "edit_distance_treshold_5p": 10,
-      "edit_distance_treshold_3p": 6,
-      "source_ontology": "source_ontology-string-value",
-      "number_of_threads": null,
-      "min_read": 8,
-      "ambiguous_letters": true,
-      "fastq_files": [
-        {
-          "secondaryFiles": [],
-          "class": "File",
-          "metadata": {
-            "sample_group": "test1"
-          },
-          "size": 0,
-          "path": "/path/to/fastq_file-1.ext"
-        },
-        {
-          "secondaryFiles": [],
-          "class": "File",
-          "metadata": {
-            "sample_group": "test2"
-          },
-          "size": 0,
-          "path": "/path/to/fastq_file-2.ext"
-        },
-        {
-          "secondaryFiles": [],
-          "class": "File",
-          "size": 0,
-          "path": "/path/to/fastq_file-3.ext"
-        },
-        {
-          "secondaryFiles": [],
-          "class": "File",
-          "size": 0,
-          "path": "/path/to/fastq_file-4.ext"
-        }
-      ],
-      "reference_file": {
-        "size": 0,
-        "path": "/path/to/reference_file.ext",
-        "class": "File",
-        "secondaryFiles": []
-      },
-      "display_group_output": true,
-      "deletion_score": 1.9293315992862135
-    }
-  },
-  "cwlVersion": "sbg:draft-2",
-  "id": "https://api.sbgenomics.com/v2/apps/nikola_tesic/quagmir-dev/quagmir/49/raw/",
-  "sbg:cmdPreview": "/bin/bash run.sh",
-  "sbg:links": [
-    {
-      "label": "QuagmiR Homepage",
-      "id": "https://github.com/duxan/quagmir"
-    },
-    {
-      "label": "QuagmiR Source Code",
-      "id": "https://github.com/duxan/quagmir"
-    },
-    {
-      "label": "QuagmiR Download",
-      "id": "https://github.com/duxan/quagmir"
-    },
-    {
-      "label": "QuagmiR Documentation",
-      "id": "https://github.com/duxan/quagmir"
-    }
-  ],
-  "hints": [
-    {
-      "value": {
-        "script": "{\n  var nthreads = $job.inputs.number_of_threads || [].concat($job.inputs.fastq_files).length\n  if(nthreads > 36) nthreads = 36\n  return(nthreads)\n}",
-        "class": "Expression",
-        "engine": "#cwl-js-engine"
-      },
-      "class": "sbg:CPURequirement"
-    },
-    {
-      "value": 1000,
-      "class": "sbg:MemRequirement"
-    },
-    {
-      "dockerPull": "images.sbgenomics.com/nikola_tesic/quagmir:adding_gff_11",
-      "dockerImageId": "",
-      "class": "DockerRequirement"
-    }
-  ],
-  "label": "QuagmiR",
-  "arguments": [],
-  "sbg:project": "nikola_tesic/quagmir-dev",
-  "sbg:id": "nikola_tesic/quagmir-dev/quagmir/49",
-  "sbg:appVersion": [
-    "sbg:draft-2"
-  ],
-  "description": "**QuagmiR** is a python tool for mapping of miRNA sequences and detection and quantification of different isomiRs. For mapping, the tool searches for exact match in the conserved middle part of the miRNA sequence, and once the match is found it uses filtering based on other information to decide whether to discard the sequence or not. It uses FASTQ files with miRNA-Seq reads as input.\n\n**QuagmiR** requires the following input files and parameters:\n\n* **Input reads**: MiRNA-Seq reads in FASTQ format (gzipped input accepted). If multiple files are provided, all available threads on the instance will be used so the task's run time is made as short as possible by running **QuagmiR** on samples in parallel.\n\n* **Reference file**: Reference file containing names of miRNA sequences, their conserved parts and miRNA sequences themselves. For this, [motif_list_hsa.fa](https://cgc.sbgenomics.com/public/files/5a8dab554f0c3a81d19fca69/) can be used, which contains human miRNAs. Otherwise, any list of miRNAs can be used as **Reference file** as long as it adheres to the format of [motif_list_hsa.fa](https://cgc.sbgenomics.com/public/files/5a8dab554f0c3a81d19fca69/) (for example, if there is interest only in specific miRNAs, only those can be used as reference, and if FASTQ files belong to some non-human species, then reference file for that species is needed).\n\n*A list of **all inputs and parameters** with corresponding descriptions can be found at the end of the page.*\n\n### Common Use Cases\n\nMicroRNAs (abbreviated miRNAs) are small non-coding RNA molecules (containing about 22 nucleotides) found in plants, animals and some viruses, that have a function in RNA silencing and post-transcriptional regulation of gene expression. IsomiRs are sequences that have variations with respect to the reference MiRNA sequence.\n\nEach miRNA is considered to have a conserved part in the middle that is the same for all of its isomiRs. **QuagmiR** searches for that part in the input FASTQ file, and than chooses reads among those that pass the filtering thresholds (such as 3' and 5' ends filtering where the ends need to have smaller weighted Levenstein distance from the miRNA than the user defined threshold (which can be switched off altogether)).\n\nAfter filtering, for sequences that are aligned to multiple miRNA reads, the best alignment is chosen based on the total weighted Levenstein distance between them. This can be changed by setting the **Destructive motif pull** parameter to False. That way, all possible alignments will be outputted.\n\nAdditionally, as previously mentioned, different **Reference file**s can be chosen, so that they better fit a specific use-case (i.e. a subset of miRNA references contained in the **Reference file** we provide on the platform, so that only particular types of miRNA that are of interest are explored).\n\nAll these parameters, and several others that are described at the end of this page, provide the user with a wide range of possibilities to use this tool in. The tool can be used for general miRNA mapping and isomiR quantification, but it can be used for more specific needs as well by applying different filters, using different sets of miRNA references, turning the **Destructive motif pull** option on or off, etc.\n\n### Changes Introduced by Seven Bridges\n\n* Collapsed files can be used as an optional input, so for each FASTQ file that has it's COLLAPSED file, **QuagmiR** will skip the collapsing step, so the execution time can be shortened. This is useful when analyzing same input files with different tool options such as filtering thresholds, so the files are collapsed only the first time. If some of the input files have COLLAPSED files and some don't, COLLAPSED files will be created and outputed for the new input files.\n\n### Common Issues and Important Notes\n\n* At the moment, only **Reference file**s for human miRNA have been built and tested, so the tool can't be used on other species without first creating the **Reference file**, which requires information regarding that species' miRNA that may not be known yet (most notably, length and positions of conserved parts within the known miRNA sequences).\n\n### Performance Benchmarking\n\nIn the following table you can find estimates of running times and costs. All input files are FASTQ files containing miRNA-Seq reads. If not specified otherwise, number of threads for the tool will be set to be the same as number of input files, or 36 in case the number of files is greater than 36. The instance is set to either default c4.2xlarge, or, in case more threads are required, to the cheapest instance that has sufficient number of threads.\n\nExecution time depends on many factors, but the most important ones are size of input files and whether the **Ambiguous letters support** is turned on or not.\n\n*Cost can be significantly reduced by **spot instance** usage. Visit [knowledge center](https://docs.sevenbridges.com/docs/about-spot-instances) for more details.*         \n\n#####Example runs:\n\n| Experiment type | Input size | Ambiguous letters | Read length | Duration | Cost | Instance (AWS)| Instance type |\n|-----------------------|------------|-----------------|------------|-----------------|-------------|--------------|------------------|-------------|---------------|------------|\n| miRNA-Seq         | 1    | 864 MB     | No        | 15-30         | 17m   | $0.16            | c4.2xlarge      | On-demand        |\n| miRNA-Seq         | 1    | 864 MB     | Yes        | 15-30         | 1h 19m   | $0.73            | c4.2xlarge      | On-demand        |\n| miRNA-Seq         | 72     | 599MB - 872MB      | Yes        | 15-30         | 2h 19m   | $1.24            | c4.8xlarge      | On-demand        |\n\n### API Python Implementation\n\nThe tool's draft task can also be submitted via the **API**. In order to learn how to get your **Authentication token** and **API endpoint** for corresponding platform visit our [documentation](https://github.com/sbg/sevenbridges-python#authentication-and-configuration).\n\n```python\nfrom sevenbridges import Api\n\nauthentication_token, api_endpoint = \"enter_your_token\", \"enter_api_endpoint\"\napi = Api(token=authentication_token, url=api_endpoint)\n# Get project_id/workflow_id from your address bar. Example: https://igor.sbgenomics.com/u/your_username/project/tool\nproject_id, tool_id = \"your_username/project\", \"your_username/project/tool\"\n# Get file names from files in your project. Example: Names are taken from Data/Public Reference Files.\ninputs = {\n    'fastq_files': list(api.files.query(project=project_id, names=['miRNA_test_file.fastq'])), \n    'motif_consensus_file': api.files.query(project=project_id, names=['motif_list_hsa.fa'])[0]\n}\ntask = api.tasks.create(name='QuagmiR - API Example', project=project_id, app=tool_id, inputs=inputs, run=True)\n```\n\nInstructions for installing and configuring the API Python client, are provided on [github](https://github.com/sbg/sevenbridges-python#installation). For more information about using the API Python client, consult [sevenbridges-python documentation](http://sevenbridges-python.readthedocs.io/en/latest/). **More examples** are available [here](https://github.com/sbg/okAPI).\n\nAdditionally, [API R](https://github.com/sbg/sevenbridges-r) and [API Java](https://github.com/sbg/sevenbridges-java) clients are available. To learn more about using these API clients please refer to the [API R client documentation](https://sbg.github.io/sevenbridges-r/), and [API Java client documentation](https://docs.sevenbridges.com/docs/java-library-quickstart).\n\n### References\n\n[1] [Github repo](https://github.com/duxan/quagmir)\n\n[2] Authors and their contact: [Xavier Bofill De Ross](https://github.com/xbdr86), [Kevin Chen](https://github.com/kevchn), [Nikola Tesic](https://github.com/nikola-tesic), [Dusan Randjelovic](https://github.com/duxan)",
-  "sbg:createdBy": "nikola_tesic",
-  "sbg:categories": [
-    "miRNA"
   ],
   "class": "CommandLineTool",
-  "sbg:revision": 49,
+  "sbg:revision": 52,
   "sbg:contributors": [
     "nikola_tesic",
     "uros_sipetic"
@@ -656,9 +674,9 @@
         "File"
       ],
       "label": "Motif-consensus file",
-      "id": "#motif_consensus_file",
-      "sbg:fileTypes": "FA",
       "description": "Reference file containing name, motif sequence, and mature miRNA sequence for each miRNA.",
+      "sbg:fileTypes": "FA",
+      "id": "#motif_consensus_file",
       "sbg:category": "Input files"
     },
     {
@@ -680,10 +698,10 @@
         }
       ],
       "label": "Input reads",
-      "id": "#fastq_files",
+      "description": "Input miRNA-Seq reads. It can be one sample, or multiple, in which case QuagmiR will use all of available threads so the task's run time would be as short as possible.",
       "sbg:fileTypes": "FASTQ",
       "sbg:stageInput": "link",
-      "description": "Input miRNA-Seq reads. It can be one sample, or multiple, in which case QuagmiR will use all of available threads so the task's run time would be as short as possible.",
+      "id": "#fastq_files",
       "sbg:category": "Input files"
     },
     {
@@ -692,8 +710,8 @@
         "int"
       ],
       "label": "Number of threads",
-      "id": "#number_of_threads",
       "description": "Number of threads for QuagmiR to use. If there is 36 files or less, it is recommended to use one thread per file. If there are more files it is best to use divider of the number of files, or in case number of files exceeds 100, set it to 36. Default number of threads is set to number of files in case there is no more than 36 files, and to 36 otherwise.",
+      "id": "#number_of_threads",
       "sbg:category": "Input parameters"
     },
     {
@@ -705,10 +723,10 @@
         }
       ],
       "label": "Collapsed files",
-      "id": "#collapsed",
+      "description": "Collapsed files made by previous tun of the tool. They must be named same like the fastqs with \".collapsed\" at the end of the file name.",
       "sbg:fileTypes": "COLLAPSED",
       "sbg:stageInput": "link",
-      "description": "Collapsed files made by previous tun of the tool. They must be named same like the fastqs with \".collapsed\" at the end of the file name.",
+      "id": "#collapsed",
       "sbg:category": "Input files"
     },
     {
@@ -728,8 +746,8 @@
         "string"
       ],
       "label": "Group output name",
-      "id": "#group_output_name",
       "description": "Prefix for group output files.",
+      "id": "#group_output_name",
       "sbg:category": "Output options"
     },
     {
@@ -771,10 +789,10 @@
         "float"
       ],
       "label": "Deletion score",
-      "description": "Deletion score for calculating edit distance.",
+      "id": "#deletion_score",
       "sbg:toolDefaultValue": "1",
       "sbg:stageInput": null,
-      "id": "#deletion_score",
+      "description": "Deletion score for calculating edit distance.",
       "sbg:category": "Edit distance parameters"
     },
     {
@@ -783,10 +801,10 @@
         "float"
       ],
       "label": "Insertion score",
-      "description": "Insertion score for edit distance calculation.",
+      "id": "#insertion_score",
       "sbg:toolDefaultValue": "1",
       "sbg:stageInput": null,
-      "id": "#insertion_score",
+      "description": "Insertion score for edit distance calculation.",
       "sbg:category": "Edit distance parameters"
     },
     {
@@ -943,8 +961,8 @@
         }
       ],
       "label": "Substitution score",
-      "id": "#substitution_score",
       "description": "Substitution score for edit distance calculation.",
+      "id": "#substitution_score",
       "sbg:category": "Edit distance parameters"
     },
     {
@@ -963,8 +981,8 @@
         "string"
       ],
       "label": "miRBase version",
-      "id": "#mirbase_version",
       "description": "miRBase version.",
+      "id": "#mirbase_version",
       "sbg:toolDefaultValue": "21"
     },
     {
@@ -973,8 +991,8 @@
         "string"
       ],
       "label": "Source ontology",
-      "id": "#source_ontology",
       "description": "Source ontology.",
+      "id": "#source_ontology",
       "sbg:toolDefaultValue": "miRBase v21 doi:10.25504/fairsharing.hmgte8"
     }
   ],

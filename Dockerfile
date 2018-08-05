@@ -34,11 +34,11 @@ RUN git clone https://github.com/duxan/quagmir
 RUN conda env create -f quagmir/environment.yml
 
 #restart following steps
-RUN echo 11
+RUN echo 13
 
 WORKDIR /opt/quagmir
 RUN git fetch
-RUN git checkout adding_gff_11
+RUN git checkout adding_gff_13
 WORKDIR /opt/
 
 RUN rm -rf quagmir/motif-consensus.fa
