@@ -33,12 +33,12 @@ dependencies:
 - ecdsa=0.13=py35_0
 - mkl=11.3.3=0
 - numpy=1.11.0=py35_1
-- openssl=1.0.2h=1
+- openssl=1.0.1
 - pandas=0.18.1=np111py35_0
 - paramiko=1.16.0=py35_0
 - pip=8.1.2=py35_0
 - pycrypto=2.6.1=py35_4
-- python=3.5.1=0
+- python=3.5.0=0
 - pytz=2016.4=py35_0
 - pyyaml=3.11=py35_4
 - r::zlib=1.2.8
@@ -52,6 +52,7 @@ dependencies:
 - xz=5.0.5=1
 - yaml=0.1.6=0
 - pip:
+  - pystan==2.17.0.0
   - dropbox==5.2.1
   - filechunkio==1.6
   - ftputil==3.2
@@ -61,4 +62,3 @@ dependencies:
   - urllib3==1.12
   - git+https://github.com/infoscout/weighted-levenshtein.git
 prefix: /Users/chenk8/miniconda3/envs/quagmir
-

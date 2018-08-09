@@ -1,19 +1,27 @@
-# DISPLAY
-min_ratio: .1
-min_read: 9
+# FILTERING
+min_ratio: .1 # to be set to -1 to switch off min_ratio filtering
+min_read: 9 # to be set to -1 to switch off min_read filtering
+edit_distance_3p: 3 # to be set to -1 to switch off 3p filtering
+edit_distance_5p: 2 # to be set to -1 to switch off 5p filtering
 
+# DISPLAY
 display_summary: True
 display_sequence_info: True
 display_nucleotide_dist: True
-display_expression: True
 display_group_output: True
-display_distance_metric: True
 
-# FUNCTION
+# AMBIGUOUS LETTERS
+ambiguous_letters: True
+
+# DESTRUCTIVE MOTIF PULL
 destructive_motif_pull: False
 
 # INPUT
+data: 'data' # path to folder containing input files
 motif_consensus_file: 'motif-consensus.fa'
+reference_file: 'miRBase21-master.tsv'
+mirbase_version: '21' # version of miRBase being used for reference files
+source_ontology: 'miRBase v21 doi:10.25504/fairsharing.hmgte8'
 
 # OUTPUT
 group_output_name: 'cohort1'
