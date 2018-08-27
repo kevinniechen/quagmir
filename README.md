@@ -3,7 +3,9 @@
 ![alt tag](https://img.shields.io/dub/l/vibe-d.svg)
 
 # QuagmiR
-A python-based miRNA sequencing pipeline for isomiR quantification and analysis
+A python-based miRNA sequencing pipeline for isomiR quantification and analysis.
+
+This repository is no longer supported. Please see https://github.com/Gu-Lab-RBL-NCI/QuagmiR for the newest version of this tool.
 
 ![alt tag](http://g.recordit.co/GbfgMIq28L.gif)
 
